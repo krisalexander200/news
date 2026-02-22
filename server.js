@@ -15,7 +15,9 @@ const SOURCES = [
   { name: 'BBC', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml' },
   { name: 'NYTimes', url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml' },
+  { name: 'NEW YORK POST', url: 'https://nypost.com/feed/' },
   { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  { name: 'HACKER NEWS', url: 'https://news.ycombinator.com/rss' },
   { name: 'AGENCE FRANCE-PRESSE', url: 'https://news.google.com/rss/search?q=site%3Aafp.com&hl=en-US&gl=US&ceid=US%3Aen' },
   { name: 'AP TOP', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com%20%22AP%20Top%20News%22&hl=en-US&gl=US&ceid=US%3Aen' },
   { name: 'AP RADIO', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com%20audio&hl=en-US&gl=US&ceid=US%3Aen' },
@@ -47,6 +49,9 @@ const cache = {
   expiresAt: 0,
   pending: null
 };
+
+const NON_LATIN_SCRIPT_PATTERN =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Hebrew}]/u;
 
 function asArray(value) {
   if (value === undefined || value === null) {
@@ -120,6 +125,26 @@ function limitWords(input, maxWords) {
     return input;
   }
   return `${words.slice(0, maxWords).join(' ')}...`;
+}
+
+function isLikelyEnglishText(text) {
+  const cleaned = cleanText(text);
+  if (!cleaned) {
+    return false;
+  }
+
+  if (NON_LATIN_SCRIPT_PATTERN.test(cleaned)) {
+    return false;
+  }
+
+  const letters = cleaned.match(/\p{L}/gu) || [];
+  const asciiLetters = cleaned.match(/[A-Za-z]/g) || [];
+  if (!letters.length || !asciiLetters.length) {
+    return false;
+  }
+
+  const asciiRatio = asciiLetters.length / letters.length;
+  return asciiRatio >= 0.72;
 }
 
 function tldrFrom(item) {
@@ -366,7 +391,8 @@ async function fetchSource(source) {
         image: extractImage(item)
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((entry) => isLikelyEnglishText(entry.title));
 }
 
 function dedupeAndSort(items) {
@@ -448,7 +474,9 @@ async function getNews(forceRefresh = false) {
   return cache.pending;
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+const webPublicDir = path.join(__dirname, 'apps', 'web', 'public');
+
+app.use(express.static(webPublicDir));
 
 app.get('/api/news', async (req, res) => {
   try {
@@ -464,7 +492,7 @@ app.get('/api/news', async (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(webPublicDir, 'index.html'));
 });
 
 app.listen(PORT, () => {

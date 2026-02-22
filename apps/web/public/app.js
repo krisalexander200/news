@@ -7,6 +7,7 @@ const groupBtnEl = document.getElementById('groupBtn');
 const storyTemplate = document.getElementById('storyTemplate');
 const urgentLeadEl = document.getElementById('urgentLead');
 const urgentTitleLinkEl = document.getElementById('urgentTitleLink');
+const relatedLinksEl = document.getElementById('relatedLinks');
 const urgentDetailEl = document.getElementById('urgentDetail');
 
 let latestItems = [];
@@ -46,6 +47,33 @@ const URGENCY_RULES = [
   { term: 'ceasefire', weight: 2 }
 ];
 
+const NON_LATIN_SCRIPT_PATTERN = /[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u3400-\u9FFF]/;
+
+const STOP_WORDS = new Set([
+  'about', 'after', 'again', 'against', 'among', 'around', 'because', 'being', 'before', 'between', 'could', 'during', 'first',
+  'from', 'have', 'into', 'just', 'more', 'most', 'over', 'said', 'than', 'that', 'their', 'there', 'these', 'they', 'this',
+  'those', 'through', 'under', 'very', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would'
+]);
+
+function isLikelyEnglishTitle(text) {
+  const value = String(text || '').trim();
+  if (!value) {
+    return false;
+  }
+
+  if (NON_LATIN_SCRIPT_PATTERN.test(value)) {
+    return false;
+  }
+
+  const letters = value.match(/[A-Za-z\u00C0-\u024F]/g) || [];
+  const asciiLetters = value.match(/[A-Za-z]/g) || [];
+  if (!letters.length || !asciiLetters.length) {
+    return false;
+  }
+
+  return asciiLetters.length / letters.length >= 0.7;
+}
+
 function formatTime(isoString) {
   if (!isoString) {
     return 'time unknown';
@@ -69,18 +97,15 @@ function setStatus(text) {
 }
 
 function showErrors(errors) {
-  if (!errors || !errors.length) {
-    errorBoxEl.hidden = true;
-    errorBoxEl.textContent = '';
-    return;
+  errorBoxEl.hidden = true;
+  errorBoxEl.textContent = '';
+
+  if (errors && errors.length) {
+    // Feed-level failures should not interrupt the reading experience.
+    // Keep visibility in developer tools only.
+    // eslint-disable-next-line no-console
+    console.debug('Suppressed feed source errors:', errors);
   }
-
-  const message = errors
-    .map((entry) => `${entry.source}: ${entry.error}`)
-    .join(' | ');
-
-  errorBoxEl.hidden = false;
-  errorBoxEl.textContent = `Some sources failed: ${message}`;
 }
 
 function recencyScore(isoString) {
@@ -146,10 +171,86 @@ function pickUrgentStory(items) {
   return items[0];
 }
 
-function renderUrgentStory(item) {
+function tokenize(text) {
+  return String(text || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4 && !STOP_WORDS.has(token));
+}
+
+function overlapCount(leftTokens, rightTokens) {
+  const rightSet = new Set(rightTokens);
+  let count = 0;
+  for (const token of leftTokens) {
+    if (rightSet.has(token)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function pickRelatedStories(anchorStory, pool) {
+  if (!anchorStory || !pool.length) {
+    return [];
+  }
+
+  const anchorTopic = classifyTopic(anchorStory);
+  const anchorTokens = tokenize(`${anchorStory.title} ${anchorStory.tldr}`);
+
+  const ranked = pool
+    .filter((item) => item.id !== anchorStory.id)
+    .map((item) => {
+      const itemTopic = classifyTopic(item);
+      const itemTokens = tokenize(`${item.title} ${item.tldr}`);
+      const shared = overlapCount(anchorTokens, itemTokens);
+
+      let score = 0;
+      if (itemTopic === anchorTopic) {
+        score += 2;
+      }
+      score += Math.min(shared, 4);
+      if (item.source === anchorStory.source) {
+        score += 1;
+      }
+
+      return {
+        item,
+        score,
+        timestamp: item.publishedAt ? Date.parse(item.publishedAt) : 0
+      };
+    })
+    .filter((entry) => entry.score >= 2)
+    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+    .slice(0, 4)
+    .map((entry) => entry.item);
+
+  return ranked;
+}
+
+function renderRelatedLinks(relatedStories) {
+  relatedLinksEl.innerHTML = '';
+
+  if (!relatedStories.length) {
+    relatedLinksEl.hidden = true;
+    return;
+  }
+
+  relatedLinksEl.hidden = false;
+  for (const story of relatedStories) {
+    const link = document.createElement('a');
+    link.href = story.link;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = story.title;
+    relatedLinksEl.appendChild(link);
+  }
+}
+
+function renderUrgentStory(item, relatedStories) {
   if (!item) {
     urgentLeadEl.hidden = true;
     urgentStoryId = null;
+    renderRelatedLinks([]);
     return;
   }
 
@@ -158,10 +259,9 @@ function renderUrgentStory(item) {
 
   urgentTitleLinkEl.href = item.link;
   urgentTitleLinkEl.textContent = item.title;
-  urgentDetailEl.hidden = tldrMode;
-  if (!tldrMode) {
-    urgentDetailEl.textContent = `${item.source} ${formatTime(item.publishedAt)} - ${item.tldr}`;
-  }
+  renderRelatedLinks(relatedStories);
+  urgentDetailEl.hidden = true;
+  urgentDetailEl.textContent = '';
 }
 
 function appendStory(container, item) {
@@ -250,9 +350,11 @@ function renderStories(items) {
   newsListEl.classList.toggle('grouped', groupedView);
   newsListEl.classList.toggle('ungrouped', !groupedView);
   const urgentStory = pickUrgentStory(items);
-  renderUrgentStory(urgentStory);
+  const featuredId = urgentStory ? urgentStory.id : null;
 
-  const displayItems = urgentStoryId ? items.filter((item) => item.id !== urgentStoryId) : items;
+  const displayItems = featuredId ? items.filter((item) => item.id !== featuredId) : items;
+  const relatedStories = pickRelatedStories(urgentStory, displayItems);
+  renderUrgentStory(urgentStory, relatedStories);
 
   if (!displayItems.length) {
     const empty = document.createElement('p');
@@ -294,7 +396,7 @@ async function loadNews(forceRefresh = false) {
     }
 
     const data = await response.json();
-    const items = Array.isArray(data.items) ? data.items : [];
+    const items = (Array.isArray(data.items) ? data.items : []).filter((item) => isLikelyEnglishTitle(item.title));
     latestItems = items;
     renderStories(items);
     showErrors(data.errors || []);
