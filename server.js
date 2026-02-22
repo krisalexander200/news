@@ -8,14 +8,31 @@ const he = require('he');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CACHE_TTL_MS = 3 * 60 * 1000;
-const FEED_ITEM_LIMIT = 30;
-const RESULT_LIMIT = 90;
+const FEED_ITEM_LIMIT = 40;
+const RESULT_LIMIT = 114;
 
 const SOURCES = [
   { name: 'BBC', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml' },
   { name: 'NYTimes', url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml' },
-  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' }
+  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  { name: 'AGENCE FRANCE-PRESSE', url: 'https://news.google.com/rss/search?q=site%3Aafp.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'AP TOP', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com%20%22AP%20Top%20News%22&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'AP RADIO', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com%20audio&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'BLOOMBERG', url: 'https://feeds.bloomberg.com/markets/news.rss' },
+  { name: 'DEUTSCHE PRESSE-AGENTUR', url: 'https://news.google.com/rss/search?q=site%3Adpa-international.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'DEUTCHE WELLE', url: 'https://rss.dw.com/rdf/rss-en-all' },
+  { name: 'DRUDGE REPORT', url: 'https://news.google.com/rss/search?q=site%3Adrudgereport.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'INTERFAX', url: 'https://news.google.com/rss/search?q=site%3Ainterfax.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'ITAR-TASS', url: 'https://tass.com/rss/v2.xml' },
+  { name: 'KYODO', url: 'https://news.google.com/rss/search?q=site%3Aenglish.kyodonews.net&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'MCCLATCHY [DC]', url: 'https://news.google.com/rss/search?q=site%3Amcclatchydc.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'NHK', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml' },
+  { name: 'PRAVDA', url: 'https://news.google.com/rss/search?q=site%3Aenglish.pravda.ru&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'PRESS TRUST INDIA', url: 'https://news.google.com/rss/search?q=site%3Aptinews.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'REUTERS POLITICS WORLD', url: 'https://news.google.com/rss/search?q=site%3Areuters.com%2Fpolitics%20OR%20site%3Areuters.com%2Fworld&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'XINHUA', url: 'https://english.news.cn/rss/worldrss.xml' },
+  { name: 'YONHAP', url: 'https://en.yna.co.kr/RSS/news.xml' }
 ];
 
 const parser = new XMLParser({
@@ -106,11 +123,7 @@ function limitWords(input, maxWords) {
 }
 
 function tldrFrom(item) {
-  const rawDescription =
-    textValue(item.description) ||
-    textValue(item.summary) ||
-    textValue(item['content:encoded']) ||
-    textValue(item.content);
+  const rawDescription = rawDescriptionFrom(item);
 
   const cleanedDescription = cleanText(rawDescription);
   if (cleanedDescription) {
@@ -119,6 +132,15 @@ function tldrFrom(item) {
 
   const fallback = cleanText(textValue(item.title));
   return limitWords(fallback || 'No summary available.', 14);
+}
+
+function rawDescriptionFrom(item) {
+  return (
+    textValue(item.description) ||
+    textValue(item.summary) ||
+    textValue(item['content:encoded']) ||
+    textValue(item.content)
+  );
 }
 
 function extractLink(item) {
@@ -156,6 +178,113 @@ function extractDate(item) {
     return null;
   }
   return parsed.toISOString();
+}
+
+function isHttpUrl(value) {
+  return /^https?:\/\//i.test((value || '').trim());
+}
+
+function isProbablyImageUrl(value) {
+  const url = (value || '').toLowerCase();
+  return (
+    /\.(avif|gif|jpe?g|png|webp)(?:$|[?#])/i.test(url) ||
+    url.includes('/image') ||
+    url.includes('/img') ||
+    url.includes('thumbnail') ||
+    url.includes('photo')
+  );
+}
+
+function findImageUrlInNode(node, parentMimeType = '', depth = 0) {
+  if (!node || depth > 4) {
+    return '';
+  }
+
+  if (typeof node === 'string') {
+    const trimmed = node.trim();
+    if (!isHttpUrl(trimmed)) {
+      return '';
+    }
+    return isProbablyImageUrl(trimmed) ? trimmed : '';
+  }
+
+  if (Array.isArray(node)) {
+    for (const entry of node) {
+      const found = findImageUrlInNode(entry, parentMimeType, depth + 1);
+      if (found) {
+        return found;
+      }
+    }
+    return '';
+  }
+
+  if (typeof node === 'object') {
+    const mimeType = typeof node['@_type'] === 'string' ? node['@_type'].toLowerCase() : parentMimeType;
+    const likelyImageType = !mimeType || mimeType.startsWith('image/');
+    const directKeys = ['@_url', '@_href', '@_src', 'url', 'href', 'src', '#text'];
+
+    for (const key of directKeys) {
+      const candidate = node[key];
+      if (typeof candidate !== 'string') {
+        continue;
+      }
+
+      const trimmed = candidate.trim();
+      if (!isHttpUrl(trimmed)) {
+        continue;
+      }
+
+      if (likelyImageType || isProbablyImageUrl(trimmed)) {
+        return trimmed;
+      }
+    }
+
+    for (const value of Object.values(node)) {
+      const found = findImageUrlInNode(value, mimeType, depth + 1);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return '';
+}
+
+function imageFromDescription(item) {
+  const rawDescription = rawDescriptionFrom(item);
+  if (!rawDescription) {
+    return '';
+  }
+
+  const match = String(rawDescription).match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (!match || !match[1]) {
+    return '';
+  }
+
+  const candidate = match[1].trim();
+  return isHttpUrl(candidate) ? candidate : '';
+}
+
+function extractImage(item) {
+  const candidateNodes = [
+    item['media:content'],
+    item['media:thumbnail'],
+    item['media:group'],
+    item.enclosure,
+    item['itunes:image'],
+    item.image,
+    item.thumbnail
+  ];
+
+  for (const node of candidateNodes) {
+    const imageUrl = findImageUrlInNode(node);
+    if (imageUrl) {
+      return normalizeUrl(imageUrl);
+    }
+  }
+
+  const fromDescription = imageFromDescription(item);
+  return fromDescription ? normalizeUrl(fromDescription) : '';
 }
 
 function normalizeUrl(urlString) {
@@ -233,7 +362,8 @@ async function fetchSource(source) {
         title,
         link,
         publishedAt: extractDate(item),
-        tldr: tldrFrom(item)
+        tldr: tldrFrom(item),
+        image: extractImage(item)
       };
     })
     .filter(Boolean);

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Minimal News Wire</title>
+    <title>DripWire</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,12 +14,27 @@
   </head>
   <body>
     <main class="shell">
+      <section id="urgentLead" class="urgent-lead" hidden>
+        <div class="urgent-copy">
+          <h2 class="urgent-title">
+            <a id="urgentTitleLink" target="_blank" rel="noopener noreferrer"></a>
+          </h2>
+          <p id="urgentDetail" class="urgent-detail"></p>
+        </div>
+      </section>
+
       <header class="topbar">
         <div>
-          <p class="kicker">Minimal Wire</p>
-          <h1>Headlines + TLDR</h1>
+          <p class="kicker">NewsDrip</p>
+          <h1>DripWire</h1>
         </div>
-        <button id="refreshBtn" type="button">Refresh</button>
+        <div class="actions">
+          <button id="tldrBtn" class="action-btn" type="button" aria-pressed="true">TLDR</button>
+          <button id="groupBtn" class="action-btn" type="button" aria-pressed="true">
+            Show Mixed Feed
+          </button>
+          <button id="refreshBtn" class="action-btn" type="button">Refresh</button>
+        </div>
       </header>
 
       <p id="statusLine" class="status">Loading latest stories...</p>
@@ -29,9 +44,8 @@
 
     <template id="storyTemplate">
       <article class="story">
-        <p class="meta"></p>
         <h2><a target="_blank" rel="noopener noreferrer"></a></h2>
-        <p class="tldr"></p>
+        <p class="detail"></p>
       </article>
     </template>
 
