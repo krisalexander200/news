@@ -6,14 +6,14 @@ const pkg = JSON.parse(
 );
 
 const APP_NAME = 'NewsDrip';
-const APP_SLUG = 'dripwire-mobile';
-const APP_SCHEME = 'dripwire';
+const APP_SLUG = 'newsdrip-mobile';
+const APP_SCHEME = 'newsdrip';
 const APP_VERSION = pkg.version || '1.0.0';
 
 const IOS_BUNDLE_ID =
-  process.env.EXPO_PUBLIC_IOS_BUNDLE_ID || 'com.krisalexander.dripwire';
+  process.env.EXPO_PUBLIC_IOS_BUNDLE_ID || 'com.krisalexander.newsdrip';
 const ANDROID_PACKAGE =
-  process.env.EXPO_PUBLIC_ANDROID_PACKAGE || 'com.krisalexander.dripwire';
+  process.env.EXPO_PUBLIC_ANDROID_PACKAGE || 'com.krisalexander.newsdrip';
 
 module.exports = {
   expo: {

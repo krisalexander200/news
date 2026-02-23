@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   NativeModules,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   View
@@ -355,6 +355,10 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [tldrMode, setTldrMode] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [isHeaderPinned, setIsHeaderPinned] = useState(false);
+  const [inlineHeaderY, setInlineHeaderY] = useState(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const isHeaderPinnedRef = useRef(false);
 
   const featuredStory = useMemo(() => pickFeaturedStory(items), [items]);
 
@@ -368,6 +372,15 @@ export default function App() {
 
   const relatedStories = useMemo(() => pickRelatedStories(featuredStory, listItems), [featuredStory, listItems]);
   const groupedStories = useMemo(() => groupStories(listItems), [listItems]);
+  const sections = useMemo(
+    () =>
+      groupedStories.map((group) => ({
+        key: group.topic,
+        title: `${group.topic} (${group.items.length})`,
+        data: group.items
+      })),
+    [groupedStories]
+  );
 
   const openLink = useCallback(async (url) => {
     try {
@@ -413,8 +426,53 @@ export default function App() {
     loadNews(false);
   }, [loadNews]);
 
-  const renderStory = (item) => (
-    <Pressable key={item.id} style={styles.story} onPress={() => openLink(item.link)}>
+  const onListScroll = useCallback((event) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const shouldPin = typeof inlineHeaderY === 'number' && inlineHeaderY > 0 && offsetY >= inlineHeaderY;
+    if (shouldPin !== isHeaderPinnedRef.current) {
+      isHeaderPinnedRef.current = shouldPin;
+      setIsHeaderPinned(shouldPin);
+    }
+  }, [inlineHeaderY]);
+
+  const renderTopBar = (inline = false) => (
+    <View
+      style={[
+        styles.header,
+        inline ? styles.headerInline : styles.headerPinned,
+        inline && isHeaderPinned ? styles.headerGhost : null
+      ]}
+      onLayout={
+        inline
+          ? (event) => {
+              const { y, height } = event.nativeEvent.layout;
+              if (typeof inlineHeaderY !== 'number' || Math.abs(inlineHeaderY - y) > 0.5) {
+                setInlineHeaderY(y);
+              }
+              if (height !== headerHeight) {
+                setHeaderHeight(height);
+              }
+            }
+          : undefined
+      }
+    >
+      <View style={styles.brandWrap}>
+        <Text style={styles.brand}>NewsDrip</Text>
+        <Text style={styles.brandDot}>.</Text>
+      </View>
+      <View style={styles.actions}>
+        <Pressable
+          style={[styles.button, tldrMode ? styles.buttonActiveRed : null]}
+          onPress={() => setTldrMode((value) => !value)}
+        >
+          <Text style={[styles.buttonText, tldrMode ? styles.buttonTextActive : null]}>TLDR</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const renderStory = ({ item }) => (
+    <Pressable style={styles.story} onPress={() => openLink(item.link)}>
       <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
       {!tldrMode ? (
         <Text style={styles.storyDetail}>
@@ -424,63 +482,66 @@ export default function App() {
     </Pressable>
   );
 
+  const renderListHeader = () => (
+    <View>
+      {featuredStory ? (
+        <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
+          <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
+            {featuredStory.title}
+          </Text>
+
+          {relatedStories.length ? (
+            <View style={styles.relatedList}>
+              {relatedStories.map((item) => (
+                <Text
+                  key={item.id}
+                  style={styles.relatedItem}
+                  onPress={() => openLink(item.link)}
+                >
+                  {item.title}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </Pressable>
+      ) : null}
+
+      {renderTopBar(true)}
+
+      {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
+      {loading ? <Text style={styles.status}>Loading...</Text> : null}
+    </View>
+  );
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <StatusBar style="dark" />
-        <ScrollView
+        <View style={[styles.pinnedHeaderSlot, isHeaderPinned && headerHeight ? { height: headerHeight } : null]}>
+          {isHeaderPinned ? renderTopBar(false) : null}
+        </View>
+        <SectionList
           style={styles.container}
           contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNews(true)} />}
-        >
-          {featuredStory ? (
-            <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
-              <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
-                {featuredStory.title}
-              </Text>
-
-              {relatedStories.length ? (
-                <View style={styles.relatedList}>
-                  {relatedStories.map((item) => (
-                    <Text
-                      key={item.id}
-                      style={styles.relatedItem}
-                      onPress={() => openLink(item.link)}
-                    >
-                      {item.title}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-            </Pressable>
-          ) : null}
-
-          <View style={styles.header}>
-            <Text style={styles.brand}>NewsDrip</Text>
-            <View style={styles.actions}>
-              <Pressable
-                style={[styles.button, tldrMode ? styles.buttonActiveRed : null]}
-                onPress={() => setTldrMode((value) => !value)}
-              >
-                <Text style={[styles.buttonText, tldrMode ? styles.buttonTextActive : null]}>TLDR</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
-          {loading ? <Text style={styles.status}>Loading...</Text> : null}
-
-          <View style={styles.feed}>
-            {groupedStories.map((group) => (
-              <View key={group.topic} style={styles.groupBlock}>
-                <Text style={styles.groupTitle}>
-                  {group.topic} ({group.items.length})
-                </Text>
-                {group.items.map((item) => renderStory(item))}
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          renderItem={renderStory}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.groupTitle}>{section.title}</Text>
+          )}
+          stickySectionHeadersEnabled
+          ListHeaderComponent={renderListHeader}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
+          ListEmptyComponent={
+            !loading && !loadError ? (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.status}>No stories available.</Text>
               </View>
-            ))}
-          </View>
-        </ScrollView>
+            ) : null
+          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNews(true)} />}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -490,6 +551,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f4f1ea'
+  },
+  pinnedHeaderSlot: {
+    height: 0,
+    backgroundColor: '#f4f1ea',
+    paddingHorizontal: 14
   },
   container: {
     flex: 1
@@ -501,20 +567,42 @@ const styles = StyleSheet.create({
   },
   header: {
     borderTopWidth: 1,
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderColor: '#181818',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingVertical: 9,
     gap: 10
   },
+  headerInline: {
+    marginTop: 8,
+    marginBottom: 12
+  },
+  headerPinned: {
+    marginTop: 0,
+    marginBottom: 0
+  },
+  headerGhost: {
+    opacity: 0
+  },
+  brandWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    flexShrink: 1
+  },
   brand: {
-    fontSize: 28,
+    fontSize: 38,
     fontWeight: '700',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: undefined }),
     color: '#111',
     flexShrink: 1
+  },
+  brandDot: {
+    fontSize: 38,
+    lineHeight: 40,
+    color: '#c90a00',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: undefined })
   },
   actions: {
     flexDirection: 'row',
@@ -534,38 +622,38 @@ const styles = StyleSheet.create({
     borderColor: '#9a1c16'
   },
   buttonText: {
-    fontSize: 17,
+    fontSize: 16,
     color: '#181818'
   },
   buttonTextActive: {
     color: '#fffdf8'
   },
   featured: {
-    paddingVertical: 10,
+    paddingVertical: 4,
     paddingHorizontal: 6,
-    marginBottom: 6
+    marginBottom: 2
   },
   featuredTitle: {
     textAlign: 'center',
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 32,
     color: '#9a1c16'
   },
   featuredTitleCompact: {
-    fontSize: 26,
-    lineHeight: 30
+    fontSize: 24,
+    lineHeight: 27
   },
   relatedList: {
-    marginTop: 8,
+    marginTop: 6,
     gap: 2,
     alignItems: 'center'
   },
   relatedItem: {
     color: '#555',
     fontWeight: '700',
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 18,
     textAlign: 'center'
   },
   status: {
@@ -579,14 +667,6 @@ const styles = StyleSheet.create({
     color: '#7a1f13',
     fontSize: 14
   },
-  feed: {
-    gap: 10
-  },
-  groupBlock: {
-    borderWidth: 1,
-    borderColor: '#d6d0c3',
-    backgroundColor: '#fffdf8'
-  },
   groupTitle: {
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -595,23 +675,29 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     color: '#555',
-    backgroundColor: '#f3ecdd'
+    backgroundColor: '#f3ecdd',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: '#d6d0c3'
   },
   story: {
+    borderWidth: 1,
+    borderColor: '#d6d0c3',
     borderTopWidth: 1,
-    borderTopColor: '#d6d0c3',
     paddingHorizontal: 10,
     paddingVertical: 9,
-    backgroundColor: '#fffdf8'
+    backgroundColor: '#fffdf8',
+    marginBottom: 0
   },
   storyTitle: {
-    fontSize: 22,
-    lineHeight: 26,
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '500',
     color: '#181818'
   },
   storyTitleCompact: {
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 17,
     fontWeight: '400'
   },
   storyDetail: {
@@ -619,5 +705,8 @@ const styles = StyleSheet.create({
     color: '#555',
     fontSize: 14,
     lineHeight: 19
+  },
+  emptyWrap: {
+    paddingVertical: 8
   }
 });
