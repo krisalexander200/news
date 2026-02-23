@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DripWire</title>
+    <title>NewsDrip</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,19 +25,12 @@
       </section>
 
       <header class="topbar">
-        <div>
-          <h1>DripWire</h1>
-        </div>
+        <h1 class="brand-wordmark">NewsDrip<span class="brand-dot">.</span></h1>
         <div class="actions">
           <button id="tldrBtn" class="action-btn" type="button" aria-pressed="true">TLDR</button>
-          <button id="groupBtn" class="action-btn" type="button" aria-pressed="true">
-            Show Mixed Feed
-          </button>
-          <button id="refreshBtn" class="action-btn" type="button">Refresh</button>
         </div>
       </header>
 
-      <p id="statusLine" class="status">Loading latest stories...</p>
       <section id="errorBox" class="error-box" hidden></section>
       <section id="newsList" class="news-list" aria-live="polite"></section>
     </main>

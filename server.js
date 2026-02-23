@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const os = require('node:os');
 const path = require('node:path');
 
 const express = require('express');
@@ -6,15 +7,19 @@ const { XMLParser } = require('fast-xml-parser');
 const he = require('he');
 
 const app = express();
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
 const CACHE_TTL_MS = 3 * 60 * 1000;
 const FEED_ITEM_LIMIT = 40;
 const RESULT_LIMIT = 114;
+const DRUDGE_FEED_URL = 'https://feedpress.me/drudgereportfeed';
 
 const SOURCES = [
   { name: 'BBC', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { name: 'CNN', url: 'https://rss.cnn.com/rss/edition.rss' },
   { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml' },
   { name: 'NYTimes', url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml' },
+  { name: 'DEADLINE', url: 'https://deadline.com/feed/' },
   { name: 'NEW YORK POST', url: 'https://nypost.com/feed/' },
   { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
   { name: 'HACKER NEWS', url: 'https://news.ycombinator.com/rss' },
@@ -24,7 +29,7 @@ const SOURCES = [
   { name: 'BLOOMBERG', url: 'https://feeds.bloomberg.com/markets/news.rss' },
   { name: 'DEUTSCHE PRESSE-AGENTUR', url: 'https://news.google.com/rss/search?q=site%3Adpa-international.com&hl=en-US&gl=US&ceid=US%3Aen' },
   { name: 'DEUTCHE WELLE', url: 'https://rss.dw.com/rdf/rss-en-all' },
-  { name: 'DRUDGE REPORT', url: 'https://news.google.com/rss/search?q=site%3Adrudgereport.com&hl=en-US&gl=US&ceid=US%3Aen' },
+  { name: 'DRUDGE REPORT', url: DRUDGE_FEED_URL },
   { name: 'INTERFAX', url: 'https://news.google.com/rss/search?q=site%3Ainterfax.com&hl=en-US&gl=US&ceid=US%3Aen' },
   { name: 'ITAR-TASS', url: 'https://tass.com/rss/v2.xml' },
   { name: 'KYODO', url: 'https://news.google.com/rss/search?q=site%3Aenglish.kyodonews.net&hl=en-US&gl=US&ceid=US%3Aen' },
@@ -52,6 +57,11 @@ const cache = {
 
 const NON_LATIN_SCRIPT_PATTERN =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Hebrew}]/u;
+const SOURCE_DEDUPE_PRIORITY = new Map([
+  ['DRUDGE REPORT', 3],
+  ['CNN', 2],
+  ['NEW YORK POST', 1]
+]);
 
 function asArray(value) {
   if (value === undefined || value === null) {
@@ -166,6 +176,63 @@ function rawDescriptionFrom(item) {
     textValue(item['content:encoded']) ||
     textValue(item.content)
   );
+}
+
+function drudgeLeadScore(item) {
+  const raw = String(rawDescriptionFrom(item) || '');
+  if (!raw) {
+    return 0;
+  }
+
+  if (/\bmain headline,\s*1st\s*(?:story|link)\b/i.test(raw)) {
+    return 5;
+  }
+  if (/\bmain headline,\s*1st\b/i.test(raw)) {
+    return 4;
+  }
+  if (/\btop headline,\s*1st\s*(?:story|link)\b/i.test(raw)) {
+    return 3;
+  }
+  if (/\btop headline,\s*1st\b/i.test(raw)) {
+    return 2;
+  }
+  if (/\b1st\s*(?:story|link)\b/i.test(raw)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function selectDrudgeLeadItems(items) {
+  const ranked = (items || [])
+    .map((item) => ({ item, score: drudgeLeadScore(item) }))
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length) {
+    return [];
+  }
+
+  if (ranked[0].score <= 0) {
+    return [ranked[0].item];
+  }
+
+  return [ranked[0].item];
+}
+
+function extractDrudgeMainHeadlineLink(item) {
+  const raw = String(rawDescriptionFrom(item) || '');
+  if (!raw) {
+    return '';
+  }
+
+  const contextualMatch = raw.match(
+    /\((?:main|top)\sheadline,\s*1st\s*(?:story|link),\s*<a[^>]+href=["']([^"']+)["']/i
+  );
+  if (contextualMatch && contextualMatch[1]) {
+    return contextualMatch[1].trim();
+  }
+
+  return '';
 }
 
 function extractLink(item) {
@@ -344,6 +411,10 @@ function itemId(title, link) {
     .slice(0, 16);
 }
 
+function sourcePriority(sourceName) {
+  return SOURCE_DEDUPE_PRIORITY.get(String(sourceName || '').trim().toUpperCase()) || 0;
+}
+
 function getRawItems(xml) {
   const rssItems = asArray(xml?.rss?.channel?.item);
   if (rssItems.length) {
@@ -371,12 +442,20 @@ async function fetchSource(source) {
 
   const xml = await response.text();
   const parsed = parser.parse(xml);
-  const rawItems = getRawItems(parsed).slice(0, FEED_ITEM_LIMIT);
+  let sourceItems = getRawItems(parsed);
+  if (source.name === 'DRUDGE REPORT') {
+    sourceItems = selectDrudgeLeadItems(sourceItems);
+  }
+  const rawItems = sourceItems.slice(0, FEED_ITEM_LIMIT);
 
-  return rawItems
+  const mapped = rawItems
     .map((item) => {
       const title = cleanText(textValue(item.title));
-      const link = normalizeUrl(extractLink(item));
+      const link = normalizeUrl(
+        source.name === 'DRUDGE REPORT'
+          ? (extractDrudgeMainHeadlineLink(item) || extractLink(item))
+          : extractLink(item)
+      );
       if (!title || !link) {
         return null;
       }
@@ -393,6 +472,46 @@ async function fetchSource(source) {
     })
     .filter(Boolean)
     .filter((entry) => isLikelyEnglishText(entry.title));
+
+  return mapped;
+}
+
+async function fetchDrudgeLeadItem() {
+  const response = await fetch(DRUDGE_FEED_URL, {
+    headers: {
+      'User-Agent': 'MinimalNewsAggregator/1.0 (+local)'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const xml = await response.text();
+  const parsed = parser.parse(xml);
+  const sourceItems = selectDrudgeLeadItems(getRawItems(parsed)).slice(0, 1);
+
+  for (const item of sourceItems) {
+    const title = cleanText(textValue(item.title));
+    const link = normalizeUrl(extractDrudgeMainHeadlineLink(item) || extractLink(item));
+    if (!title || !link) {
+      continue;
+    }
+    if (!isLikelyEnglishText(title)) {
+      continue;
+    }
+
+    return {
+      id: itemId(title, link),
+      source: 'DRUDGE REPORT',
+      title,
+      link,
+      publishedAt: extractDate(item),
+      tldr: tldrFrom(item),
+      image: extractImage(item)
+    };
+  }
+  return null;
 }
 
 function dedupeAndSort(items) {
@@ -406,6 +525,16 @@ function dedupeAndSort(items) {
       continue;
     }
 
+    const existingPriority = sourcePriority(existing.source);
+    const currentPriority = sourcePriority(item.source);
+    if (currentPriority > existingPriority) {
+      map.set(key, item);
+      continue;
+    }
+    if (currentPriority < existingPriority) {
+      continue;
+    }
+
     const existingTs = existing.publishedAt ? Date.parse(existing.publishedAt) : 0;
     const currentTs = item.publishedAt ? Date.parse(item.publishedAt) : 0;
     if (currentTs > existingTs) {
@@ -413,13 +542,22 @@ function dedupeAndSort(items) {
     }
   }
 
-  return Array.from(map.values())
+  const ranked = Array.from(map.values())
     .sort((a, b) => {
       const aTs = a.publishedAt ? Date.parse(a.publishedAt) : 0;
       const bTs = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return bTs - aTs;
-    })
-    .slice(0, RESULT_LIMIT);
+    });
+
+  const limited = ranked.slice(0, RESULT_LIMIT);
+  const drudgeLead = ranked.find(
+    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
+  );
+  if (drudgeLead && !limited.some((item) => item.id === drudgeLead.id) && limited.length) {
+    limited[limited.length - 1] = drudgeLead;
+  }
+
+  return limited;
 }
 
 async function aggregateNews() {
@@ -441,6 +579,23 @@ async function aggregateNews() {
       source: source.name,
       error: result.reason?.message || 'Unknown fetch error'
     });
+  }
+
+  const hasDrudge = items.some(
+    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
+  );
+  if (!hasDrudge) {
+    try {
+      const drudgeLead = await fetchDrudgeLeadItem();
+      if (drudgeLead) {
+        items.push(drudgeLead);
+      }
+    } catch (error) {
+      errors.push({
+        source: 'DRUDGE REPORT',
+        error: error?.message || 'Unknown fetch error'
+      });
+    }
   }
 
   return {
@@ -495,7 +650,24 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(webPublicDir, 'index.html'));
 });
 
-app.listen(PORT, () => {
+function findLanIp() {
+  const interfaces = os.networkInterfaces();
+  for (const addresses of Object.values(interfaces)) {
+    for (const address of addresses || []) {
+      if (address && address.family === 'IPv4' && !address.internal) {
+        return address.address;
+      }
+    }
+  }
+  return '';
+}
+
+app.listen(PORT, HOST, () => {
+  const lanIp = findLanIp();
   // eslint-disable-next-line no-console
   console.log(`News aggregator running at http://localhost:${PORT}`);
+  if (lanIp) {
+    // eslint-disable-next-line no-console
+    console.log(`LAN URL: http://${lanIp}:${PORT}`);
+  }
 });

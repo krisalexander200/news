@@ -4,3 +4,5 @@ npm-debug.log*
 .expo
 apps/mobile/.expo
 apps/mobile/.expo-shared
+.env
+apps/mobile/.env

@@ -1,9 +1,7 @@
 const newsListEl = document.getElementById('newsList');
-const statusLineEl = document.getElementById('statusLine');
 const errorBoxEl = document.getElementById('errorBox');
-const refreshBtnEl = document.getElementById('refreshBtn');
 const tldrBtnEl = document.getElementById('tldrBtn');
-const groupBtnEl = document.getElementById('groupBtn');
+const topbarEl = document.querySelector('.topbar');
 const storyTemplate = document.getElementById('storyTemplate');
 const urgentLeadEl = document.getElementById('urgentLead');
 const urgentTitleLinkEl = document.getElementById('urgentTitleLink');
@@ -12,7 +10,6 @@ const urgentDetailEl = document.getElementById('urgentDetail');
 
 let latestItems = [];
 let tldrMode = true;
-let groupedView = true;
 let urgentStoryId = null;
 
 const TOPIC_RULES = [
@@ -54,6 +51,7 @@ const STOP_WORDS = new Set([
   'from', 'have', 'into', 'just', 'more', 'most', 'over', 'said', 'than', 'that', 'their', 'there', 'these', 'they', 'this',
   'those', 'through', 'under', 'very', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would'
 ]);
+const FEATURED_SOURCE_PRIORITY = new Set(['CNN', 'DRUDGE REPORT', 'NEW YORK POST']);
 
 function isLikelyEnglishTitle(text) {
   const value = String(text || '').trim();
@@ -90,10 +88,6 @@ function formatTime(isoString) {
     hour: 'numeric',
     minute: '2-digit'
   }).format(date);
-}
-
-function setStatus(text) {
-  statusLineEl.textContent = text;
 }
 
 function showErrors(errors) {
@@ -150,7 +144,7 @@ function urgencyScore(item) {
   return score;
 }
 
-function pickUrgentStory(items) {
+function pickTopByUrgency(items) {
   if (!items.length) {
     return null;
   }
@@ -169,6 +163,28 @@ function pickUrgentStory(items) {
   }
 
   return items[0];
+}
+
+function pickUrgentStory(items) {
+  if (!items.length) {
+    return null;
+  }
+
+  const drudgeLead = items.find(
+    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
+  );
+  if (drudgeLead) {
+    return drudgeLead;
+  }
+
+  const prioritized = items.filter((item) =>
+    FEATURED_SOURCE_PRIORITY.has(String(item.source || '').trim().toUpperCase())
+  );
+  if (prioritized.length) {
+    return pickTopByUrgency(prioritized);
+  }
+
+  return pickTopByUrgency(items);
 }
 
 function tokenize(text) {
@@ -317,12 +333,6 @@ function groupStories(items) {
     .map((topic) => ({ topic, items: grouped.get(topic) }));
 }
 
-function renderUngrouped(items) {
-  for (const item of items) {
-    appendStory(newsListEl, item);
-  }
-}
-
 function renderGrouped(items) {
   const groups = groupStories(items);
   for (const group of groups) {
@@ -347,8 +357,8 @@ function renderGrouped(items) {
 
 function renderStories(items) {
   newsListEl.innerHTML = '';
-  newsListEl.classList.toggle('grouped', groupedView);
-  newsListEl.classList.toggle('ungrouped', !groupedView);
+  newsListEl.classList.add('grouped');
+  newsListEl.classList.remove('ungrouped');
   const urgentStory = pickUrgentStory(items);
   const featuredId = urgentStory ? urgentStory.id : null;
 
@@ -364,17 +374,7 @@ function renderStories(items) {
     return;
   }
 
-  if (groupedView) {
-    renderGrouped(displayItems);
-    return;
-  }
-
-  renderUngrouped(displayItems);
-}
-
-function syncGroupButton() {
-  groupBtnEl.setAttribute('aria-pressed', String(groupedView));
-  groupBtnEl.textContent = groupedView ? 'Show Mixed Feed' : 'Group by Topic';
+  renderGrouped(displayItems);
 }
 
 function syncTldrButton() {
@@ -382,15 +382,18 @@ function syncTldrButton() {
   document.body.classList.toggle('tldr-only', tldrMode);
 }
 
-async function loadNews(forceRefresh = false) {
-  refreshBtnEl.disabled = true;
-  if (forceRefresh) {
-    setStatus('Refreshing stories...');
+function syncStickyOffsets() {
+  if (!topbarEl) {
+    return;
   }
 
+  const topbarHeight = Math.ceil(topbarEl.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--sticky-topbar-height', `${topbarHeight}px`);
+}
+
+async function loadNews() {
   try {
-    const endpoint = forceRefresh ? '/api/news?refresh=1' : '/api/news';
-    const response = await fetch(endpoint);
+    const response = await fetch('/api/news');
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -400,31 +403,19 @@ async function loadNews(forceRefresh = false) {
     latestItems = items;
     renderStories(items);
     showErrors(data.errors || []);
-    setStatus(`Updated ${formatTime(data.generatedAt)} • ${items.length} stories`);
   } catch (error) {
-    setStatus('Failed to load stories.');
     showErrors([{ source: 'Aggregator', error: error.message || 'Unknown error' }]);
-  } finally {
-    refreshBtnEl.disabled = false;
   }
 }
-
-refreshBtnEl.addEventListener('click', () => {
-  loadNews(true);
-});
-
-groupBtnEl.addEventListener('click', () => {
-  groupedView = !groupedView;
-  syncGroupButton();
-  renderStories(latestItems);
-});
 
 tldrBtnEl.addEventListener('click', () => {
   tldrMode = !tldrMode;
   syncTldrButton();
   renderStories(latestItems);
+  syncStickyOffsets();
 });
 
-syncGroupButton();
+window.addEventListener('resize', syncStickyOffsets);
+syncStickyOffsets();
 syncTldrButton();
 loadNews();

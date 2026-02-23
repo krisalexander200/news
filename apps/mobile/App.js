@@ -1,19 +1,110 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Linking,
+  NativeModules,
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View
 } from 'react-native';
+import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-const DEFAULT_BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || DEFAULT_BASE_URL;
+function isPlaceholderApiBaseUrl(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return (
+    normalized.includes('your-render-service.onrender.com') ||
+    normalized.includes('your-api') ||
+    normalized.includes('example.com')
+  );
+}
+
+function extractHost(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  const withScheme = raw.includes('://') ? raw : `http://${raw}`;
+  const match = withScheme.match(/^[a-zA-Z]+:\/\/([^/:]+)/);
+  if (!match) {
+    return '';
+  }
+
+  const host = match[1].toLowerCase();
+  if (!host || host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+    return '';
+  }
+
+  return host;
+}
+
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function buildApiBaseCandidates(configuredBaseUrl) {
+  const cleanedConfigured = String(configuredBaseUrl || '').trim();
+  if (cleanedConfigured) {
+    return [cleanedConfigured.replace(/\/$/, '')];
+  }
+
+  const hostCandidates = unique([
+    extractHost(NativeModules?.SourceCode?.scriptURL),
+    extractHost(Constants.linkingUri),
+    extractHost(Constants.experienceUrl),
+    extractHost(Constants.expoConfig?.hostUri),
+    extractHost(Constants.expoGoConfig?.debuggerHost),
+    extractHost(Constants.manifest?.debuggerHost),
+    extractHost(Constants.manifest2?.extra?.expoClient?.hostUri)
+  ]);
+
+  const bases = hostCandidates.map((host) => `http://${host}:3000`);
+  if (Platform.OS === 'android') {
+    bases.push('http://10.0.2.2:3000');
+  } else if (Platform.OS === 'ios') {
+    bases.push('http://localhost:3000');
+  } else {
+    bases.push('http://localhost:3000');
+    bases.push('http://10.0.2.2:3000');
+  }
+
+  return unique(bases.map((entry) => entry.replace(/\/$/, '')));
+}
+
+async function fetchFromCandidates(baseCandidates, forceRefresh) {
+  const endpointPath = `/api/news${forceRefresh ? '?refresh=1' : ''}`;
+  let lastError = new Error('Unable to reach API');
+
+  for (const baseUrl of baseCandidates) {
+    try {
+      const response = await fetch(`${baseUrl}${endpointPath}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { data, baseUrl };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
+const RAW_CONFIGURED_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  Constants.expoConfig?.extra?.apiBaseUrl ||
+  '';
+const CONFIGURED_BASE_URL = isPlaceholderApiBaseUrl(RAW_CONFIGURED_BASE_URL)
+  ? ''
+  : String(RAW_CONFIGURED_BASE_URL).trim();
+const API_BASE_CANDIDATES = buildApiBaseCandidates(CONFIGURED_BASE_URL);
 
 const TOPIC_RULES = [
   { name: 'Politics', keywords: ['election', 'senate', 'congress', 'parliament', 'president', 'government', 'policy'] },
@@ -40,6 +131,15 @@ const URGENCY_RULES = [
   { term: 'wildfire', weight: 3 },
   { term: 'hurricane', weight: 3 }
 ];
+
+const STOP_WORDS = new Set([
+  'about', 'after', 'again', 'against', 'among', 'around', 'because', 'being', 'before', 'between', 'could', 'during', 'first',
+  'from', 'have', 'into', 'just', 'more', 'most', 'over', 'said', 'than', 'that', 'their', 'there', 'these', 'they', 'this',
+  'those', 'through', 'under', 'very', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would'
+]);
+const FEATURED_SOURCE_PRIORITY = new Set(['CNN', 'DRUDGE REPORT', 'NEW YORK POST']);
+
+const NON_LATIN_SCRIPT_PATTERN = /[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u3400-\u9FFF]/;
 
 function formatTime(isoString) {
   if (!isoString) {
@@ -101,7 +201,7 @@ function urgencyScore(item) {
   return score;
 }
 
-function pickFeaturedStory(items) {
+function pickTopByUrgency(items) {
   if (!items.length) {
     return null;
   }
@@ -115,6 +215,47 @@ function pickFeaturedStory(items) {
     .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp);
 
   return ranked[0]?.item || items[0];
+}
+
+function pickFeaturedStory(items) {
+  if (!items.length) {
+    return null;
+  }
+
+  const drudgeLead = items.find(
+    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
+  );
+  if (drudgeLead) {
+    return drudgeLead;
+  }
+
+  const prioritized = items.filter((item) =>
+    FEATURED_SOURCE_PRIORITY.has(String(item.source || '').trim().toUpperCase())
+  );
+  if (prioritized.length) {
+    return pickTopByUrgency(prioritized);
+  }
+
+  return pickTopByUrgency(items);
+}
+
+function isLikelyEnglishTitle(text) {
+  const value = String(text || '').trim();
+  if (!value) {
+    return false;
+  }
+
+  if (NON_LATIN_SCRIPT_PATTERN.test(value)) {
+    return false;
+  }
+
+  const letters = value.match(/[A-Za-z\u00C0-\u024F]/g) || [];
+  const asciiLetters = value.match(/[A-Za-z]/g) || [];
+  if (!letters.length || !asciiLetters.length) {
+    return false;
+  }
+
+  return asciiLetters.length / letters.length >= 0.7;
 }
 
 function classifyTopic(item) {
@@ -156,13 +297,62 @@ function groupStories(items) {
     .map((topic) => ({ topic, items: grouped.get(topic) }));
 }
 
+function tokenize(text) {
+  return String(text || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4 && !STOP_WORDS.has(token));
+}
+
+function overlapCount(leftTokens, rightTokens) {
+  const rightSet = new Set(rightTokens);
+  let count = 0;
+  for (const token of leftTokens) {
+    if (rightSet.has(token)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function pickRelatedStories(anchorStory, pool) {
+  if (!anchorStory || !pool.length) {
+    return [];
+  }
+
+  const anchorTopic = classifyTopic(anchorStory);
+  const anchorTokens = tokenize(`${anchorStory.title} ${anchorStory.tldr}`);
+
+  return pool
+    .filter((item) => item.id !== anchorStory.id)
+    .map((item) => {
+      const itemTopic = classifyTopic(item);
+      const shared = overlapCount(anchorTokens, tokenize(`${item.title} ${item.tldr}`));
+      let score = 0;
+      if (itemTopic === anchorTopic) {
+        score += 2;
+      }
+      score += Math.min(shared, 4);
+      if (item.source === anchorStory.source) {
+        score += 1;
+      }
+
+      return {
+        item,
+        score,
+        timestamp: item.publishedAt ? Date.parse(item.publishedAt) : 0
+      };
+    })
+    .filter((entry) => entry.score >= 2)
+    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+    .slice(0, 4)
+    .map((entry) => entry.item);
+}
+
 export default function App() {
   const [items, setItems] = useState([]);
-  const [generatedAt, setGeneratedAt] = useState('');
-  const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [groupedMode, setGroupedMode] = useState(true);
   const [tldrMode, setTldrMode] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -176,6 +366,7 @@ export default function App() {
     return items.filter((item) => item.id !== featuredStory.id);
   }, [items, featuredStory]);
 
+  const relatedStories = useMemo(() => pickRelatedStories(featuredStory, listItems), [featuredStory, listItems]);
   const groupedStories = useMemo(() => groupStories(listItems), [listItems]);
 
   const openLink = useCallback(async (url) => {
@@ -197,18 +388,19 @@ export default function App() {
       setLoadError('');
 
       try {
-        const endpoint = `${API_BASE_URL}/api/news${forceRefresh ? '?refresh=1' : ''}`;
-        const response = await fetch(endpoint);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+        const { data } = await fetchFromCandidates(API_BASE_CANDIDATES, forceRefresh);
+        const filteredItems = (Array.isArray(data.items) ? data.items : []).filter((item) => isLikelyEnglishTitle(item.title));
+
+        // Source-level failures are expected occasionally; keep them out of the UI.
+        if (Array.isArray(data.errors) && data.errors.length) {
+          // eslint-disable-next-line no-console
+          console.debug('Suppressed feed source errors:', data.errors);
         }
 
-        const data = await response.json();
-        setItems(Array.isArray(data.items) ? data.items : []);
-        setGeneratedAt(data.generatedAt || '');
-        setErrors(Array.isArray(data.errors) ? data.errors : []);
+        setItems(filteredItems);
       } catch (error) {
-        setLoadError(`Could not load feed from ${API_BASE_URL}. ${error.message || 'Unknown error'}`);
+        const attempted = API_BASE_CANDIDATES.join(', ');
+        setLoadError(`Could not load feed. Tried: ${attempted}. ${error.message || 'Unknown error'}`);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -233,75 +425,64 @@ export default function App() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNews(true)} />}
-      >
-        <View style={styles.header}>
-          <Text style={styles.brand}>DripWire</Text>
-          <View style={styles.actions}>
-            <Pressable
-              style={[styles.button, tldrMode ? styles.buttonActiveRed : null]}
-              onPress={() => setTldrMode((value) => !value)}
-            >
-              <Text style={[styles.buttonText, tldrMode ? styles.buttonTextActive : null]}>TLDR</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.button, groupedMode ? styles.buttonActiveDark : null]}
-              onPress={() => setGroupedMode((value) => !value)}
-            >
-              <Text style={[styles.buttonText, groupedMode ? styles.buttonTextActive : null]}>
-                {groupedMode ? 'Show Mixed Feed' : 'Group by Topic'}
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar style="dark" />
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNews(true)} />}
+        >
+          {featuredStory ? (
+            <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
+              <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
+                {featuredStory.title}
               </Text>
+
+              {relatedStories.length ? (
+                <View style={styles.relatedList}>
+                  {relatedStories.map((item) => (
+                    <Text
+                      key={item.id}
+                      style={styles.relatedItem}
+                      onPress={() => openLink(item.link)}
+                    >
+                      {item.title}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
             </Pressable>
-            <Pressable style={styles.button} onPress={() => loadNews(true)}>
-              <Text style={styles.buttonText}>Refresh</Text>
-            </Pressable>
+          ) : null}
+
+          <View style={styles.header}>
+            <Text style={styles.brand}>NewsDrip</Text>
+            <View style={styles.actions}>
+              <Pressable
+                style={[styles.button, tldrMode ? styles.buttonActiveRed : null]}
+                onPress={() => setTldrMode((value) => !value)}
+              >
+                <Text style={[styles.buttonText, tldrMode ? styles.buttonTextActive : null]}>TLDR</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
 
-        {featuredStory ? (
-          <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
-            <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
-              {featuredStory.title}
-            </Text>
-            {!tldrMode ? (
-              <Text style={styles.featuredDetail}>
-                {featuredStory.source} {formatTime(featuredStory.publishedAt)} - {featuredStory.tldr}
-              </Text>
-            ) : null}
-          </Pressable>
-        ) : null}
+          {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
+          {loading ? <Text style={styles.status}>Loading...</Text> : null}
 
-        <Text style={styles.status}>Updated {formatTime(generatedAt)} - {items.length} stories</Text>
-
-        {errors.length ? (
-          <Text style={styles.warning}>Some sources failed: {errors.map((entry) => entry.source).join(', ')}</Text>
-        ) : null}
-
-        {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
-
-        {loading ? <Text style={styles.status}>Loading...</Text> : null}
-
-        <View style={styles.feed}>
-          {!groupedMode ? (
-            listItems.map((item) => renderStory(item))
-          ) : (
-            groupedStories.map((group) => (
+          <View style={styles.feed}>
+            {groupedStories.map((group) => (
               <View key={group.topic} style={styles.groupBlock}>
                 <Text style={styles.groupTitle}>
                   {group.topic} ({group.items.length})
                 </Text>
                 {group.items.map((item) => renderStory(item))}
               </View>
-            ))
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -322,19 +503,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 2,
     borderColor: '#181818',
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
     marginBottom: 12,
     gap: 10
   },
   brand: {
-    fontSize: 44,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#111'
+    color: '#111',
+    flexShrink: 1
   },
   actions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
+    flexWrap: 'nowrap',
+    gap: 8,
+    alignItems: 'center'
   },
   button: {
     borderWidth: 1,
@@ -347,12 +533,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#9a1c16',
     borderColor: '#9a1c16'
   },
-  buttonActiveDark: {
-    backgroundColor: '#181818',
-    borderColor: '#181818'
-  },
   buttonText: {
-    fontSize: 20,
+    fontSize: 17,
     color: '#181818'
   },
   buttonTextActive: {
@@ -365,31 +547,31 @@ const styles = StyleSheet.create({
   },
   featuredTitle: {
     textAlign: 'center',
-    fontSize: 44,
+    fontSize: 32,
     fontWeight: '800',
-    lineHeight: 46,
+    lineHeight: 36,
     color: '#9a1c16'
   },
   featuredTitleCompact: {
-    fontSize: 36,
-    lineHeight: 38
+    fontSize: 26,
+    lineHeight: 30
   },
-  featuredDetail: {
-    marginTop: 6,
-    textAlign: 'center',
+  relatedList: {
+    marginTop: 8,
+    gap: 2,
+    alignItems: 'center'
+  },
+  relatedItem: {
     color: '#555',
+    fontWeight: '700',
     fontSize: 15,
-    lineHeight: 20
+    lineHeight: 19,
+    textAlign: 'center'
   },
   status: {
     marginTop: 4,
     marginBottom: 10,
     color: '#555',
-    fontSize: 16
-  },
-  warning: {
-    marginBottom: 10,
-    color: '#8c5a0a',
     fontSize: 14
   },
   error: {
@@ -423,13 +605,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fffdf8'
   },
   storyTitle: {
-    fontSize: 31,
-    lineHeight: 34,
+    fontSize: 22,
+    lineHeight: 26,
     color: '#181818'
   },
   storyTitleCompact: {
-    fontSize: 26,
-    lineHeight: 29,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: '400'
   },
   storyDetail: {

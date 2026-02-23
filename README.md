@@ -1,6 +1,6 @@
-# DripWire
+# NewsDrip
 
-DripWire is a multi-source news aggregator with two user surfaces:
+NewsDrip is a multi-source news aggregator with two user surfaces:
 - Web app (`apps/web/public`)
 - Native mobile app (`apps/mobile`, Expo React Native)
 
@@ -22,7 +22,7 @@ npm start
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Run Mobile Surface (Started)
+## Run Mobile Surface
 
 Start the API first:
 
@@ -45,6 +45,13 @@ Or from root:
 npm run start:mobile
 ```
 
+Run API + mobile together:
+
+```bash
+cd /Users/us3r-2022/Code/Projects/News
+npm run dev:mobile
+```
+
 ### Mobile API Base URL
 
 The mobile app reads `EXPO_PUBLIC_API_BASE_URL`.
@@ -58,6 +65,57 @@ For a physical device, set your LAN IP:
 ```bash
 EXPO_PUBLIC_API_BASE_URL=http://192.168.1.50:3000 npm start
 ```
+
+If mobile says it cannot reach the API, open `http://<your-lan-ip>:3000/api/news` in iPhone Safari first.
+
+For production/store builds, set `EXPO_PUBLIC_API_BASE_URL` to your deployed API (for example Render/Railway/Fly).
+
+## Build for iOS and Android (EAS)
+
+1. Install and authenticate EAS CLI:
+
+```bash
+npx eas-cli login
+```
+
+2. Set mobile env vars:
+
+```bash
+cp /Users/us3r-2022/Code/Projects/News/apps/mobile/.env.example /Users/us3r-2022/Code/Projects/News/apps/mobile/.env
+```
+
+Edit `/Users/us3r-2022/Code/Projects/News/apps/mobile/.env` and set:
+- `EXPO_PUBLIC_API_BASE_URL` to your deployed API URL
+- Optional IDs: `EXPO_PUBLIC_IOS_BUNDLE_ID`, `EXPO_PUBLIC_ANDROID_PACKAGE`
+
+3. Initialize EAS project once:
+
+```bash
+cd /Users/us3r-2022/Code/Projects/News/apps/mobile
+npx eas-cli init
+```
+
+Copy the generated project ID into `EXPO_PUBLIC_EAS_PROJECT_ID` (in `.env` or your shell).
+
+4. Build production binaries:
+
+```bash
+cd /Users/us3r-2022/Code/Projects/News
+npm run mobile:build:ios
+npm run mobile:build:android
+```
+
+5. Submit to stores:
+
+```bash
+npm run mobile:submit:ios
+npm run mobile:submit:android
+```
+
+Notes:
+- iOS requires an Apple Developer account.
+- Android submission uses Google Play Console.
+- EAS will guide credential setup (certificates/keystores) on first run.
 
 ## API
 
@@ -76,4 +134,4 @@ Force refresh cache:
 
 - Requires Node 18+.
 - Feed fetches are cached for 3 minutes.
-- Mobile implementation is now bootstrapped and connected to the API; next steps are native polish and platform packaging.
+- Mobile surface is production-build ready through Expo + EAS.

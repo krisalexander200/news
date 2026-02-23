@@ -1,16 +1,22 @@
 {
   "name": "minimal-news-aggregator",
   "version": "1.1.0",
-  "description": "DripWire news aggregator with web and mobile surfaces",
+  "description": "NewsDrip news aggregator with web and mobile surfaces",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
     "start:web": "node server.js",
     "start:mobile": "npm --prefix apps/mobile start",
+    "dev:mobile": "npx concurrently -k -n api,mobile -c yellow,cyan \"npm:start:web\" \"npm:start:mobile\"",
+    "dev:mobile:tunnel": "./scripts/dev-mobile-tunnel.sh",
     "mobile:ios": "npm --prefix apps/mobile run ios",
     "mobile:android": "npm --prefix apps/mobile run android",
-    "mobile:web": "npm --prefix apps/mobile run web"
+    "mobile:web": "npm --prefix apps/mobile run web",
+    "mobile:build:ios": "npm --prefix apps/mobile run build:ios",
+    "mobile:build:android": "npm --prefix apps/mobile run build:android",
+    "mobile:submit:ios": "npm --prefix apps/mobile run submit:ios",
+    "mobile:submit:android": "npm --prefix apps/mobile run submit:android"
   },
   "engines": {
     "node": ">=18"
@@ -19,5 +25,8 @@
     "express": "^4.21.2",
     "fast-xml-parser": "^4.5.3",
     "he": "^1.2.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
