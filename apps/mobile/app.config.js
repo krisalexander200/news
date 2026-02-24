@@ -31,6 +31,7 @@ module.exports = {
     },
     assetBundlePatterns: ['**/*'],
     ios: {
+      icon: './assets/icon-ios.png',
       supportsTablet: true,
       bundleIdentifier: IOS_BUNDLE_ID,
       infoPlist: {
@@ -51,13 +52,20 @@ module.exports = {
     extra: {
       apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || '',
       eas: {
-        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || undefined
+        projectId:
+          process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+          process.env.EAS_PROJECT_ID ||
+          '731fa584-4177-4835-ba3a-4a289ca0510e'
       }
     },
     runtimeVersion: {
       policy: 'appVersion'
     },
     updates: {
+      url:
+        process.env.EXPO_PUBLIC_UPDATES_URL ||
+        process.env.EAS_UPDATES_URL ||
+        'https://u.expo.dev/731fa584-4177-4835-ba3a-4a289ca0510e',
       fallbackToCacheTimeout: 0
     }
   }
