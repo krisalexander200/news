@@ -77,6 +77,29 @@ cd /Users/us3r-2022/Code/Projects/News/apps/mobile
 EXPO_PUBLIC_API_BASE_URL=https://your-deployed-api.example.com npx eas-cli build --platform ios --profile production
 ```
 
+### Deploy API to Render (Blueprint)
+
+This repo includes `/Users/us3r-2022/Code/Projects/News/render.yaml` for one-click API deploy.
+
+1. In Render, create a new Blueprint/Web Service from this GitHub repo.
+2. Deploy the `newsdrip-api` service.
+3. After deploy, copy the service URL (example: `https://newsdrip-api.onrender.com`).
+4. Confirm API is live:
+   - `https://<your-render-url>/api/news`
+5. Set that URL for mobile production builds:
+
+```bash
+cd /Users/us3r-2022/Code/Projects/News/apps/mobile
+npx eas-cli secret:create --scope project --name EXPO_PUBLIC_API_BASE_URL --value https://<your-render-url>
+```
+
+6. Rebuild and submit:
+
+```bash
+npx eas-cli build --platform ios --profile production
+npx eas-cli submit --platform ios --latest
+```
+
 ## Build for iOS and Android (EAS)
 
 1. Install and authenticate EAS CLI:
