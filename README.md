@@ -70,6 +70,13 @@ If mobile says it cannot reach the API, open `http://<your-lan-ip>:3000/api/news
 
 For production/store builds, set `EXPO_PUBLIC_API_BASE_URL` to your deployed API (for example Render/Railway/Fly).
 
+Important: production/TestFlight builds cannot use `localhost`. Build with a public API URL, for example:
+
+```bash
+cd /Users/us3r-2022/Code/Projects/News/apps/mobile
+EXPO_PUBLIC_API_BASE_URL=https://your-deployed-api.example.com npx eas-cli build --platform ios --profile production
+```
+
 ## Build for iOS and Android (EAS)
 
 1. Install and authenticate EAS CLI:

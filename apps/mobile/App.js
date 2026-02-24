@@ -53,6 +53,12 @@ function buildApiBaseCandidates(configuredBaseUrl) {
     return [cleanedConfigured.replace(/\/$/, '')];
   }
 
+  // Store/TestFlight builds must use a real deployed API URL.
+  // Localhost fallbacks are only valid in local development.
+  if (!__DEV__) {
+    return [];
+  }
+
   const hostCandidates = unique([
     extractHost(NativeModules?.SourceCode?.scriptURL),
     extractHost(Constants.linkingUri),
@@ -78,6 +84,12 @@ function buildApiBaseCandidates(configuredBaseUrl) {
 
 async function fetchFromCandidates(baseCandidates, forceRefresh) {
   const endpointPath = `/api/news${forceRefresh ? '?refresh=1' : ''}`;
+  if (!baseCandidates.length) {
+    throw new Error(
+      'No API base URL configured for this build. Set EXPO_PUBLIC_API_BASE_URL to your deployed API and rebuild.'
+    );
+  }
+
   let lastError = new Error('Unable to reach API');
 
   for (const baseUrl of baseCandidates) {

@@ -6,3 +6,5 @@ apps/mobile/.expo
 apps/mobile/.expo-shared
 .env
 apps/mobile/.env
+/app.json
+/eas.json
