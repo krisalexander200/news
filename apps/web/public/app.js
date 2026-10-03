@@ -280,9 +280,10 @@ function renderUrgentStory(item, relatedStories) {
     urgentImageEl.hidden = true;
     urgentImageEl.removeAttribute('src');
   };
-  urgentImageEl.hidden = !item.image;
-  urgentImageEl.src = item.image || '';
-  urgentImageEl.alt = item.image ? item.title : '';
+  const showUrgentImage = item.image && String(item.source || '').toUpperCase() !== 'DRUDGE REPORT';
+  urgentImageEl.hidden = !showUrgentImage;
+  urgentImageEl.src = showUrgentImage ? item.image : '';
+  urgentImageEl.alt = showUrgentImage ? item.title : '';
   renderRelatedLinks(relatedStories);
   urgentDetailEl.hidden = true;
   urgentDetailEl.textContent = '';

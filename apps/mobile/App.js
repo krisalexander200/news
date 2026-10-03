@@ -151,6 +151,7 @@ const STOP_WORDS = new Set([
   'those', 'through', 'under', 'very', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would'
 ]);
 const FEATURED_SOURCE_PRIORITY = new Set(['CNN', 'DRUDGE REPORT', 'NEW YORK POST']);
+const failedImageUrls = new Set();
 
 const NON_LATIN_SCRIPT_PATTERN = /[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u3400-\u9FFF]/;
 
@@ -363,10 +364,10 @@ function pickRelatedStories(anchorStory, pool) {
 }
 
 function FeedImage({ uri, style, accessibilityLabel }) {
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(() => failedImageUrls.has(uri));
 
   useEffect(() => {
-    setFailed(false);
+    setFailed(failedImageUrls.has(uri));
   }, [uri]);
 
   if (!uri || failed) {
@@ -379,7 +380,10 @@ function FeedImage({ uri, style, accessibilityLabel }) {
       style={style}
       resizeMode="cover"
       accessibilityLabel={accessibilityLabel}
-      onError={() => setFailed(true)}
+      onError={() => {
+        failedImageUrls.add(uri);
+        setFailed(true);
+      }}
     />
   );
 }
@@ -528,7 +532,7 @@ export default function App() {
     <View>
       {featuredStory ? (
         <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
-          {featuredStory.image ? (
+          {featuredStory.image && String(featuredStory.source || '').toUpperCase() !== 'DRUDGE REPORT' ? (
             <FeedImage
               uri={featuredStory.image}
               style={styles.featuredImage}
