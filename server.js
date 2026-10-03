@@ -643,7 +643,9 @@ async function rewriteHeadlineBatch(items) {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI HTTP ${response.status}`);
+    const errorBody = await response.json().catch(() => null);
+    const providerMessage = cleanText(errorBody?.error?.message || 'Request failed');
+    throw new Error(`OpenAI HTTP ${response.status}: ${providerMessage}`);
   }
 
   const responseBody = await response.json();
@@ -672,6 +674,11 @@ async function addRewrittenHeadlines(items) {
   }
 
   const settled = await Promise.allSettled(batches.map((batch) => rewriteHeadlineBatch(batch)));
+  for (const result of settled) {
+    if (result.status === 'rejected') {
+      console.error('[headline-rewrite]', result.reason?.message || result.reason);
+    }
+  }
   const failedCount = settled.filter((result) => result.status === 'rejected').length;
 
   return {
