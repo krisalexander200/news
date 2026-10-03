@@ -6,6 +6,8 @@ NewsDrip is a multi-source news aggregator with two user surfaces:
 
 A Node API at the repo root aggregates feeds, deduplicates stories, generates short TLDRs, and serves both clients.
 
+When `OPENAI_API_KEY` is configured on the API service, NewsDrip rewrites new headlines with punchy tabloid energy while preserving the original facts. The original source headline remains available as `originalTitle`, and the API falls back to it whenever rewriting is unavailable.
+
 ## Project Structure
 
 - `/Users/us3r-2022/Code/Projects/News/server.js`: API + static web host
@@ -159,6 +161,11 @@ Returns:
 - `generatedAt`
 - `items[]` with `source`, `title`, `link`, `publishedAt`, `tldr`, `image`
 - `errors[]`
+
+Optional server environment variables:
+
+- `OPENAI_API_KEY`: enables headline rewriting; keep this server-side and never place it in the mobile app
+- `HEADLINE_REWRITE_MODEL`: defaults to `gpt-6-luna`
 
 Force refresh cache:
 

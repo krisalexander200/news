@@ -13,6 +13,10 @@ const CACHE_TTL_MS = 3 * 60 * 1000;
 const FEED_ITEM_LIMIT = 40;
 const FEED_TIMEOUT_MS = 8000;
 const RESULT_LIMIT = 114;
+const HEADLINE_REWRITE_MODEL = process.env.HEADLINE_REWRITE_MODEL || 'gpt-6-luna';
+const HEADLINE_REWRITE_TIMEOUT_MS = 20000;
+const HEADLINE_REWRITE_BATCH_SIZE = RESULT_LIMIT;
+const HEADLINE_REWRITE_CACHE_LIMIT = 2000;
 const DRUDGE_FEED_URL = 'https://feedpress.me/drudgereportfeed';
 
 const SOURCES = [
@@ -55,6 +59,8 @@ const cache = {
   expiresAt: 0,
   pending: null
 };
+
+const headlineRewriteCache = new Map();
 
 const NON_LATIN_SCRIPT_PATTERN =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Hebrew}]/u;
@@ -563,6 +569,122 @@ function dedupeAndSort(items) {
   return limited;
 }
 
+function headlineRewritePrompt(items) {
+  return [
+    'Rewrite each news headline so it is about 50% spicier than the source.',
+    'Use punchy tabloid energy: emphasize stakes, conflict, surprise, consequences, or hypocrisy when the supplied headline supports it.',
+    'Stay accurate. Preserve names, numbers, quotations, attribution, uncertainty, and the central meaning.',
+    'Never invent facts, motives, scandal, criminality, causation, or certainty.',
+    'Keep each rewrite concise and return exactly one rewrite for every supplied id.',
+    '',
+    JSON.stringify(items.map(({ id, source, title }) => ({ id, source, title })))
+  ].join('\n');
+}
+
+function responseOutputText(responseBody) {
+  for (const outputItem of responseBody?.output || []) {
+    for (const contentItem of outputItem?.content || []) {
+      if (contentItem?.type === 'output_text' && typeof contentItem.text === 'string') {
+        return contentItem.text;
+      }
+    }
+  }
+  return '';
+}
+
+function rememberHeadlineRewrite(id, title) {
+  if (headlineRewriteCache.size >= HEADLINE_REWRITE_CACHE_LIMIT) {
+    const oldestKey = headlineRewriteCache.keys().next().value;
+    headlineRewriteCache.delete(oldestKey);
+  }
+  headlineRewriteCache.set(id, title);
+}
+
+async function rewriteHeadlineBatch(items) {
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    signal: AbortSignal.timeout(HEADLINE_REWRITE_TIMEOUT_MS),
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: HEADLINE_REWRITE_MODEL,
+      reasoning: { effort: 'none' },
+      input: headlineRewritePrompt(items),
+      max_output_tokens: 3000,
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'headline_rewrites',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              rewrites: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    id: { type: 'string' },
+                    title: { type: 'string' }
+                  },
+                  required: ['id', 'title']
+                }
+              }
+            },
+            required: ['rewrites']
+          }
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI HTTP ${response.status}`);
+  }
+
+  const responseBody = await response.json();
+  const parsed = JSON.parse(responseOutputText(responseBody));
+  const requestedIds = new Set(items.map((item) => item.id));
+
+  for (const rewrite of parsed?.rewrites || []) {
+    const title = cleanText(rewrite?.title);
+    if (!requestedIds.has(rewrite?.id) || !title || title.length > 220) {
+      continue;
+    }
+    rememberHeadlineRewrite(rewrite.id, title);
+  }
+}
+
+async function addRewrittenHeadlines(items) {
+  const withOriginals = items.map((item) => ({ ...item, originalTitle: item.title }));
+  if (!process.env.OPENAI_API_KEY) {
+    return { items: withOriginals, error: null };
+  }
+
+  const missing = withOriginals.filter((item) => !headlineRewriteCache.has(item.id));
+  const batches = [];
+  for (let index = 0; index < missing.length; index += HEADLINE_REWRITE_BATCH_SIZE) {
+    batches.push(missing.slice(index, index + HEADLINE_REWRITE_BATCH_SIZE));
+  }
+
+  const settled = await Promise.allSettled(batches.map((batch) => rewriteHeadlineBatch(batch)));
+  const failedCount = settled.filter((result) => result.status === 'rejected').length;
+
+  return {
+    items: withOriginals.map((item) => ({
+      ...item,
+      title: headlineRewriteCache.get(item.id) || item.title
+    })),
+    error: failedCount
+      ? `${failedCount} of ${batches.length} headline rewrite batches failed; original headlines were used.`
+      : null
+  };
+}
+
 async function aggregateNews() {
   const settled = await Promise.allSettled(SOURCES.map((source) => fetchSource(source)));
 
@@ -601,9 +723,14 @@ async function aggregateNews() {
     }
   }
 
+  const rewritten = await addRewrittenHeadlines(dedupeAndSort(items));
+  if (rewritten.error) {
+    errors.push({ source: 'NewsDrip headlines', error: rewritten.error });
+  }
+
   return {
     generatedAt: new Date().toISOString(),
-    items: dedupeAndSort(items),
+    items: rewritten.items,
     errors
   };
 }
