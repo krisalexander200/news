@@ -432,7 +432,7 @@ function LoadingDrip() {
                   outputRange: [0, 28]
                 })
               },
-              { rotate: '45deg' },
+              { rotate: '225deg' },
               {
                 scale: progress.interpolate({
                   inputRange: [0, 0.75, 1],
