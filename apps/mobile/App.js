@@ -362,6 +362,28 @@ function pickRelatedStories(anchorStory, pool) {
     .map((entry) => entry.item);
 }
 
+function FeedImage({ uri, style, accessibilityLabel }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+
+  if (!uri || failed) {
+    return null;
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="cover"
+      accessibilityLabel={accessibilityLabel}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -491,7 +513,7 @@ export default function App() {
   const renderStory = ({ item }) => (
     <Pressable style={styles.story} onPress={() => openLink(item.link)}>
       {imageStoryIds.has(item.id) ? (
-        <Image source={{ uri: item.image }} style={styles.storyImage} resizeMode="cover" />
+        <FeedImage uri={item.image} style={styles.storyImage} accessibilityLabel={item.title} />
       ) : null}
       <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
       {!tldrMode ? (
@@ -507,7 +529,11 @@ export default function App() {
       {featuredStory ? (
         <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
           {featuredStory.image ? (
-            <Image source={{ uri: featuredStory.image }} style={styles.featuredImage} resizeMode="cover" />
+            <FeedImage
+              uri={featuredStory.image}
+              style={styles.featuredImage}
+              accessibilityLabel={featuredStory.title}
+            />
           ) : null}
           <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
             {featuredStory.title}

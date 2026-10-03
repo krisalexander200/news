@@ -276,6 +276,10 @@ function renderUrgentStory(item, relatedStories) {
 
   urgentTitleLinkEl.href = item.link;
   urgentTitleLinkEl.textContent = item.title;
+  urgentImageEl.onerror = () => {
+    urgentImageEl.hidden = true;
+    urgentImageEl.removeAttribute('src');
+  };
   urgentImageEl.hidden = !item.image;
   urgentImageEl.src = item.image || '';
   urgentImageEl.alt = item.image ? item.title : '';
@@ -292,6 +296,10 @@ function appendStory(container, item, showImage = false) {
 
   titleLink.href = item.link;
   titleLink.textContent = item.title;
+  image.onerror = () => {
+    image.hidden = true;
+    image.removeAttribute('src');
+  };
   image.hidden = !showImage;
   image.src = showImage ? item.image : '';
   image.alt = showImage ? item.title : '';
