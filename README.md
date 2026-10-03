@@ -165,7 +165,7 @@ Returns:
 Optional server environment variables:
 
 - `OPENAI_API_KEY`: enables headline rewriting; keep this server-side and never place it in the mobile app
-- `HEADLINE_REWRITE_MODEL`: defaults to `gpt-5-nano`
+- `HEADLINE_REWRITE_MODEL`: defaults to `gpt-4o-mini`
 
 Force refresh cache:
 

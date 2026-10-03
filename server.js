@@ -13,7 +13,7 @@ const CACHE_TTL_MS = 3 * 60 * 1000;
 const FEED_ITEM_LIMIT = 40;
 const FEED_TIMEOUT_MS = 8000;
 const RESULT_LIMIT = 114;
-const HEADLINE_REWRITE_MODEL = process.env.HEADLINE_REWRITE_MODEL || 'gpt-5-nano';
+const HEADLINE_REWRITE_MODEL = process.env.HEADLINE_REWRITE_MODEL || 'gpt-4o-mini';
 const HEADLINE_REWRITE_TIMEOUT_MS = 45000;
 const HEADLINE_REWRITE_BATCH_SIZE = 40;
 const HEADLINE_REWRITE_CACHE_LIMIT = 2000;
@@ -613,7 +613,6 @@ async function rewriteHeadlineBatch(items) {
     },
     body: JSON.stringify({
       model: HEADLINE_REWRITE_MODEL,
-      reasoning: { effort: 'minimal' },
       input: headlineRewritePrompt(items),
       max_output_tokens: 3000,
       text: {
