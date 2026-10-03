@@ -11,6 +11,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
 const CACHE_TTL_MS = 3 * 60 * 1000;
 const FEED_ITEM_LIMIT = 40;
+const FEED_TIMEOUT_MS = 8000;
 const RESULT_LIMIT = 114;
 const DRUDGE_FEED_URL = 'https://feedpress.me/drudgereportfeed';
 
@@ -431,6 +432,7 @@ function getRawItems(xml) {
 
 async function fetchSource(source) {
   const response = await fetch(source.url, {
+    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
     headers: {
       'User-Agent': 'MinimalNewsAggregator/1.0 (+local)'
     }
@@ -478,6 +480,7 @@ async function fetchSource(source) {
 
 async function fetchDrudgeLeadItem() {
   const response = await fetch(DRUDGE_FEED_URL, {
+    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
     headers: {
       'User-Agent': 'MinimalNewsAggregator/1.0 (+local)'
     }
@@ -632,6 +635,15 @@ async function getNews(forceRefresh = false) {
 const webPublicDir = path.join(__dirname, 'apps', 'web', 'public');
 
 app.use(express.static(webPublicDir));
+
+// Health checks must not depend on external news publishers.
+app.get('/healthz', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/privacy-policy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'docs', 'privacy-policy.html'));
+});
 
 app.get('/api/news', async (req, res) => {
   try {

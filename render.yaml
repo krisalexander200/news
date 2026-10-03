@@ -2,10 +2,11 @@ services:
   - type: web
     name: newsdrip-api
     runtime: node
-    buildCommand: npm install
+    plan: free
+    buildCommand: npm ci --omit=dev
     startCommand: npm start
     autoDeploy: true
-    healthCheckPath: /api/news
+    healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: 24

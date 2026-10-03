@@ -79,13 +79,17 @@ EXPO_PUBLIC_API_BASE_URL=https://your-deployed-api.example.com npx eas-cli build
 
 ### Deploy API to Render (Blueprint)
 
-This repo includes `/Users/us3r-2022/Code/Projects/News/render.yaml` for one-click API deploy.
+This repo includes `/Users/us3r-2022/Code/Projects/News/render.yaml` for API deployment on the **free** plan with Node 24 and a locked production dependency install. Free services sleep after 15 minutes idle; allow about a minute for the next request to wake the service. No database or paid disk is required.
+
+Feed requests time out after 8 seconds each; the optional Drudge retry can add another 8 seconds. A failed publisher does not prevent other sources from returning.
 
 1. In Render, create a new Blueprint/Web Service from this GitHub repo.
 2. Deploy the `newsdrip-api` service.
 3. After deploy, copy the service URL (example: `https://newsdrip-api.onrender.com`).
 4. Confirm API is live:
-   - `https://<your-render-url>/api/news`
+   - `https://<your-render-url>/healthz` (process health, independent of publishers)
+   - `https://<your-render-url>/api/news` (real news payload)
+   - `https://<your-render-url>/privacy-policy` (mobile privacy policy)
 5. Set that URL for mobile production builds:
 
 ```bash
