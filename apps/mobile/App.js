@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Linking,
   Image,
   NativeModules,
@@ -388,6 +390,63 @@ function FeedImage({ uri, style, accessibilityLabel }) {
   );
 }
 
+function LoadingDrip() {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true
+        }),
+        Animated.delay(220),
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true
+        })
+      ])
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [progress]);
+
+  return (
+    <View style={styles.loadingDripWrap} accessibilityLabel="Loading news">
+      <Animated.View
+        style={[
+          styles.loadingDrip,
+          {
+            opacity: progress.interpolate({
+              inputRange: [0, 0.7, 1],
+              outputRange: [1, 1, 0]
+            }),
+            transform: [
+              {
+                translateY: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 28]
+                })
+              },
+              { rotate: '45deg' },
+              {
+                scale: progress.interpolate({
+                  inputRange: [0, 0.75, 1],
+                  outputRange: [0.7, 1, 0.8]
+                })
+              }
+            ]
+          }
+        ]}
+      />
+    </View>
+  );
+}
+
 export default function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -562,7 +621,7 @@ export default function App() {
       {renderTopBar(true)}
 
       {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
-      {loading ? <Text style={styles.status}>Loading...</Text> : null}
+      {loading ? <LoadingDrip /> : null}
     </View>
   );
 
@@ -720,6 +779,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#555',
     fontSize: 14
+  },
+  loadingDripWrap: {
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 4
+  },
+  loadingDrip: {
+    width: 18,
+    height: 18,
+    backgroundColor: '#b21f18',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 3
   },
   error: {
     marginBottom: 10,
