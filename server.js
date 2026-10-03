@@ -581,6 +581,7 @@ function headlineRewritePrompt(items) {
     'Unless a supplied headline contains them, never add words or ideas such as surprise, shock, twist, bold, chaos, bombshell, showdown, drama, stunning, big plans, under scrutiny, or nobody expected.',
     'Do not change attribution such as "says" or "reports" into "confirms," and do not turn a proposal, plan, allegation, or possibility into a fact.',
     'If the source headline does not support a spicy rewrite, keep it close to the original and improve only its rhythm.',
+    'Return only the headline text. Never append notes such as "unchanged," "original," or explanations.',
     'Keep each rewrite concise and return exactly one rewrite for every supplied id.',
     '',
     JSON.stringify(items.map(({ id, source, title }) => ({ id, source, title })))
@@ -659,7 +660,9 @@ async function rewriteHeadlineBatch(items) {
   const requestedIds = new Set(items.map((item) => item.id));
 
   for (const rewrite of parsed?.rewrites || []) {
-    const title = cleanText(rewrite?.title);
+    const title = cleanText(rewrite?.title)
+      .replace(/\s*(?:\(|\[|[-—:]\s*)(?:left\s+)?(?:unchanged|original)(?:\)|\])?\s*$/i, '')
+      .trim();
     if (!requestedIds.has(rewrite?.id) || !title || title.length > 220) {
       continue;
     }
