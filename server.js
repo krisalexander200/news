@@ -575,6 +575,9 @@ function headlineRewritePrompt(items) {
     'Use punchy tabloid energy: emphasize stakes, conflict, surprise, consequences, or hypocrisy when the supplied headline supports it.',
     'Stay accurate. Preserve names, numbers, quotations, attribution, uncertainty, and the central meaning.',
     'Never invent facts, motives, scandal, criminality, causation, or certainty.',
+    'Do not add reactions, predictions, judgments, metaphors, or characterizations that are absent from the supplied headline.',
+    'Do not swap a factual action for a more extreme euphemism: for example, "calls for resignation" must remain "calls for resignation," never "calls for a scalp."',
+    'If the source headline does not support a spicy rewrite, keep it close to the original and improve only its rhythm.',
     'Keep each rewrite concise and return exactly one rewrite for every supplied id.',
     '',
     JSON.stringify(items.map(({ id, source, title }) => ({ id, source, title })))
