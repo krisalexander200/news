@@ -4,6 +4,7 @@ const tldrBtnEl = document.getElementById('tldrBtn');
 const topbarEl = document.querySelector('.topbar');
 const storyTemplate = document.getElementById('storyTemplate');
 const urgentLeadEl = document.getElementById('urgentLead');
+const urgentImageEl = document.getElementById('urgentImage');
 const urgentTitleLinkEl = document.getElementById('urgentTitleLink');
 const relatedLinksEl = document.getElementById('relatedLinks');
 const urgentDetailEl = document.getElementById('urgentDetail');
@@ -275,18 +276,25 @@ function renderUrgentStory(item, relatedStories) {
 
   urgentTitleLinkEl.href = item.link;
   urgentTitleLinkEl.textContent = item.title;
+  urgentImageEl.hidden = !item.image;
+  urgentImageEl.src = item.image || '';
+  urgentImageEl.alt = item.image ? item.title : '';
   renderRelatedLinks(relatedStories);
   urgentDetailEl.hidden = true;
   urgentDetailEl.textContent = '';
 }
 
-function appendStory(container, item) {
+function appendStory(container, item, showImage = false) {
   const node = storyTemplate.content.cloneNode(true);
   const titleLink = node.querySelector('h2 a');
   const detail = node.querySelector('.detail');
+  const image = node.querySelector('.story-image');
 
   titleLink.href = item.link;
   titleLink.textContent = item.title;
+  image.hidden = !showImage;
+  image.src = showImage ? item.image : '';
+  image.alt = showImage ? item.title : '';
   detail.hidden = tldrMode;
   if (!tldrMode) {
     detail.textContent = `${item.source} ${formatTime(item.publishedAt)} - ${item.tldr}`;
@@ -346,8 +354,9 @@ function renderGrouped(items) {
 
     const list = document.createElement('div');
     list.className = 'topic-list';
-    for (const item of group.items) {
-      appendStory(list, item);
+    const imageIndex = group.items.findIndex((item) => item.image);
+    for (const [index, item] of group.items.entries()) {
+      appendStory(list, item, index === imageIndex);
     }
 
     section.appendChild(list);

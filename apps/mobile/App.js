@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
+  Image,
   NativeModules,
   Platform,
   Pressable,
@@ -384,6 +385,10 @@ export default function App() {
 
   const relatedStories = useMemo(() => pickRelatedStories(featuredStory, listItems), [featuredStory, listItems]);
   const groupedStories = useMemo(() => groupStories(listItems), [listItems]);
+  const imageStoryIds = useMemo(
+    () => new Set(groupedStories.map((group) => group.items.find((item) => item.image)?.id).filter(Boolean)),
+    [groupedStories]
+  );
   const sections = useMemo(
     () =>
       groupedStories.map((group) => ({
@@ -485,6 +490,9 @@ export default function App() {
 
   const renderStory = ({ item }) => (
     <Pressable style={styles.story} onPress={() => openLink(item.link)}>
+      {imageStoryIds.has(item.id) ? (
+        <Image source={{ uri: item.image }} style={styles.storyImage} resizeMode="cover" />
+      ) : null}
       <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
       {!tldrMode ? (
         <Text style={styles.storyDetail}>
@@ -498,6 +506,9 @@ export default function App() {
     <View>
       {featuredStory ? (
         <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
+          {featuredStory.image ? (
+            <Image source={{ uri: featuredStory.image }} style={styles.featuredImage} resizeMode="cover" />
+          ) : null}
           <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
             {featuredStory.title}
           </Text>
@@ -641,9 +652,15 @@ const styles = StyleSheet.create({
     color: '#fffdf8'
   },
   featured: {
-    paddingVertical: 4,
+    paddingVertical: 8,
     paddingHorizontal: 6,
     marginBottom: 2
+  },
+  featuredImage: {
+    width: '100%',
+    height: 210,
+    marginBottom: 12,
+    backgroundColor: '#e5dfd3'
   },
   featuredTitle: {
     textAlign: 'center',
@@ -657,15 +674,15 @@ const styles = StyleSheet.create({
     lineHeight: 27
   },
   relatedList: {
-    marginTop: 6,
-    gap: 2,
+    marginTop: 10,
+    gap: 8,
     alignItems: 'center'
   },
   relatedItem: {
     color: '#555',
     fontWeight: '700',
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 20,
     textAlign: 'center'
   },
   status: {
@@ -701,6 +718,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fffdf8',
     marginBottom: 0
   },
+  storyImage: {
+    width: '100%',
+    height: 170,
+    marginBottom: 9,
+    backgroundColor: '#e5dfd3'
+  },
   storyTitle: {
     fontSize: 20,
     lineHeight: 24,
@@ -708,9 +731,10 @@ const styles = StyleSheet.create({
     color: '#181818'
   },
   storyTitleCompact: {
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: '400'
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: '#000'
   },
   storyDetail: {
     marginTop: 4,

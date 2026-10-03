@@ -610,7 +610,7 @@ async function rewriteHeadlineBatch(items) {
     },
     body: JSON.stringify({
       model: HEADLINE_REWRITE_MODEL,
-      reasoning: { effort: 'none' },
+      reasoning: { effort: 'minimal' },
       input: headlineRewritePrompt(items),
       max_output_tokens: 3000,
       text: {
