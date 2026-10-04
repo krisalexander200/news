@@ -17,7 +17,7 @@ import {
 import Constants from 'expo-constants';
 import legalContent from './legal-content.json';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
 
 function isPlaceholderApiBaseUrl(value) {
   const normalized = String(value || '').trim().toLowerCase();
@@ -614,11 +614,12 @@ export default function App() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNews(true)} />}
         />
       </SafeAreaView>
-      <Modal visible={legalPage !== null} animationType="slide" onRequestClose={() => setLegalPage(null)}>
-        <SafeAreaView style={styles.safeArea}>
+      <Modal visible={legalPage !== null} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setLegalPage(null)}>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.legalHeader}>
-            <Text style={styles.legalHeading}>{legalPage === 'sources' ? 'Sources & licenses' : 'Privacy policy'}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close information" onPress={() => setLegalPage(null)} style={styles.legalClose}>
+            <Text style={styles.legalHeaderTitle}>{legalPage === 'sources' ? 'Sources & licenses' : 'Privacy policy'}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close information" hitSlop={8} onPress={() => setLegalPage(null)} style={styles.legalClose}>
               <Text style={styles.legalCloseText}>Done</Text>
             </Pressable>
           </View>
@@ -636,6 +637,7 @@ export default function App() {
             ))}
           </ScrollView>
         </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaProvider>
   );
@@ -643,6 +645,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   legalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderColor: '#ccc' },
+  legalHeaderTitle: { fontSize: 20, lineHeight: 28, fontWeight: '700', color: '#181818', flexShrink: 1, marginRight: 12 },
   legalContent: { padding: 20, paddingBottom: 40 },
   legalHeading: { fontSize: 20, lineHeight: 28, fontWeight: '700', color: '#181818', marginBottom: 12, flexShrink: 1 },
   legalBody: { fontSize: 16, lineHeight: 24, color: '#333', marginBottom: 16 },
