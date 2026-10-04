@@ -4,7 +4,7 @@ NewsDrip displays original, attributed news headlines in a web interface and an 
 
 The release pipeline uses documented Creative Commons sources: eligible Global Voices-created headlines and Wikinews. Wikinews is now an archive; stories older than 30 days are excluded, so the current feed comes from Global Voices. Guest and visibly restricted Global Voices partner content is excluded. No images, excerpts, AI headline rewriting, or unverified legacy publisher feeds are served.
 
-Source and author credits, article links, and license links remain visible in both compact and detailed modes. See [the rights audit](docs/content-rights-audit.md) and [public source documentation](docs/content-sources.html).
+Source and author credits, article links, and license links remain visible beneath each headline. See [the rights audit](docs/content-rights-audit.md) and [public source documentation](docs/content-sources.html).
 
 ## Run
 

@@ -26,7 +26,7 @@ Status: prepared locally; not ready to resubmit.
 
 ## Proposed store description
 
-NewsDrip helps you discover independent reporting through a compact feed of original headlines. Browse stories by topic, switch display density with TLDR, and open the original publisher website to read more. Pull down to refresh.
+NewsDrip helps you discover independent reporting through a compact feed of original headlines. Browse stories by topic and open the original publisher website to read more. Pull down to refresh.
 
 Each headline includes author and publisher credit, a source link, and its applicable reuse license. The current feed uses eligible Global Voices reporting. NewsDrip does not reproduce article photographs or full text. No NewsDrip account or subscription is required. Publisher websites have their own privacy and access conditions.
 

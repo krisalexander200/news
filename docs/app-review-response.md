@@ -14,11 +14,11 @@ Device provided by developer: iPhone 17 Pro, iOS 27.2. Supplied Settings screens
 
 ## 2. Purpose and audience
 
-NewsDrip helps readers discover independently published news by scanning original headlines grouped by topic. Readers can switch between compact headlines and publication details, open the original article, and refresh the feed. Source credits and license links remain visible in both display modes.
+NewsDrip helps readers discover independently published news by scanning original headlines grouped by topic. Readers can open the original article and refresh the feed. Source credits and license links remain visible beneath each headline.
 
 ## 3. Setup and features
 
-An internet connection is required. No account, credentials, subscription, payment, or sample files are needed. Launch the app, scroll through topic sections, toggle TLDR to change display density, tap a headline to open its original website, return to NewsDrip, and pull down to refresh. Sources & licenses and Privacy policy are available at the bottom of the feed.
+An internet connection is required. No account, credentials, subscription, payment, or sample files are needed. Launch the app, scroll through topic sections, tap a headline to open its original website, return to NewsDrip, and pull down to refresh. Sources & licenses and Privacy policy are available at the bottom of the feed.
 
 There is no registration, login, account deletion, user-generated content, or in-app purchase. External websites have their own access conditions.
 
@@ -38,13 +38,13 @@ Global Voices-created content is licensed under CC BY 3.0 unless otherwise state
 
 Wikinews text created from December 16, 2024 is CC BY 4.0; eligible earlier text from September 25, 2005 is CC BY 2.5. The backend verifies the creation revision and attaches the applicable license. Policy: https://en.wikinews.org/wiki/Wikinews:Copyright . Current freshness filtering excludes its archived stories.
 
-Headline wording is preserved; feed markup is converted to plain text. Credits and license links remain visible in both modes. The prior unverified publisher feeds, image reproduction, feed summaries, and AI headline rewriting have been removed from the release pipeline. Public source documentation is at https://news-8ih0.onrender.com/content-sources .
+Headline wording is preserved; feed markup is converted to plain text. Credits and license links remain visible beneath each headline. The prior unverified publisher feeds, image reproduction, feed summaries, and AI headline rewriting have been removed from the release pipeline. Public source documentation is at https://news-8ih0.onrender.com/content-sources .
 
 Thank you.
 
 ## Device recording checklist
 
-Use the replacement TestFlight build, not rejected build 8 or a simulator. Begin on the Home Screen, launch NewsDrip, let headlines load, scroll, toggle TLDR, open an original article, return, and pull down to refresh. Include device model, iOS version, and build number. A continuous 30–45 second recording should cover these flows. Share a review-accessible link if attachment size is a problem.
+Use the replacement TestFlight build, not rejected build 8 or a simulator. Begin on the Home Screen, launch NewsDrip, let headlines load, scroll, open an original article, return, and pull down to refresh. Include device model, iOS version, and build number. A continuous 30–45 second recording should cover these flows. Share a review-accessible link if attachment size is a problem.
 
 The previously supplied 7.38-second clip shows the old app already open and article navigation. It does not establish launch, display toggling, return, refresh, current build, or device/OS details.
 

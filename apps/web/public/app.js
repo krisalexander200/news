@@ -1,6 +1,5 @@
 const newsListEl = document.getElementById('newsList');
 const errorBoxEl = document.getElementById('errorBox');
-const tldrBtnEl = document.getElementById('tldrBtn');
 const topbarEl = document.querySelector('.topbar');
 const storyTemplate = document.getElementById('storyTemplate');
 const urgentLeadEl = document.getElementById('urgentLead');
@@ -9,7 +8,6 @@ const relatedLinksEl = document.getElementById('relatedLinks');
 const urgentDetailEl = document.getElementById('urgentDetail');
 
 let latestItems = [];
-let tldrMode = true;
 let urgentStoryId = null;
 
 const TOPIC_RULES = [
@@ -351,11 +349,6 @@ function renderStories(items) {
   renderGrouped(displayItems);
 }
 
-function syncTldrButton() {
-  tldrBtnEl.setAttribute('aria-pressed', String(tldrMode));
-  document.body.classList.toggle('tldr-only', tldrMode);
-}
-
 function syncStickyOffsets() {
   if (!topbarEl) {
     return;
@@ -387,16 +380,9 @@ async function loadNews(forceRefresh = false) {
   }
 }
 
-tldrBtnEl.addEventListener('click', () => {
-  tldrMode = !tldrMode;
-  syncTldrButton();
-  renderStories(latestItems);
-  syncStickyOffsets();
-});
-
 window.addEventListener('resize', syncStickyOffsets);
 syncStickyOffsets();
-syncTldrButton();
+document.body.classList.add('tldr-only');
 loadNews();
 
 const refreshBtn = document.getElementById('refreshBtn');

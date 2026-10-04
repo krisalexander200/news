@@ -405,7 +405,6 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tldrMode, setTldrMode] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [isHeaderPinned, setIsHeaderPinned] = useState(false);
   const [inlineHeaderY, setInlineHeaderY] = useState(null);
@@ -512,14 +511,7 @@ export default function App() {
         <Text style={styles.brand}>NewsDrip</Text>
         <Text style={styles.brandDot}>.</Text>
       </View>
-      <View style={styles.actions}>
-        <Pressable
-          style={[styles.button, tldrMode ? styles.buttonActiveRed : null]}
-          onPress={() => setTldrMode((value) => !value)}
-        >
-          <Text style={[styles.buttonText, tldrMode ? styles.buttonTextActive : null]}>TLDR</Text>
-        </Pressable>
-      </View>
+
     </View>
   );
 
@@ -540,7 +532,7 @@ export default function App() {
   const renderStory = ({ item }) => (
     <View style={styles.story}>
       <Pressable accessibilityRole="link" onPress={() => openLink(item.link)}>
-        <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
+        <Text style={[styles.storyTitle, styles.storyTitleCompact]}>{item.title}</Text>
       </Pressable>
       {renderAttribution(item)}
     </View>
@@ -551,7 +543,7 @@ export default function App() {
       {featuredStory ? (
         <View style={styles.featured}>
           <Pressable accessibilityRole="link" onPress={() => openLink(featuredStory.link)}>
-            <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
+            <Text style={[styles.featuredTitle, styles.featuredTitleCompact]}>
               {featuredStory.title}
             </Text>
           </Pressable>
