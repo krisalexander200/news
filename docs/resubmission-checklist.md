@@ -33,3 +33,11 @@ Each headline includes author and publisher credit, a source link, and its appli
 ## Outstanding access
 
 The existing Expo CLI account is logged out. Browser login was opened on the build computer; the developer is currently on a phone. No production deployment, TestFlight upload, App Review message, or resubmission has been performed in this remediation pass.
+
+## Device details supplied
+
+Developer screenshots identify an iPhone 17 Pro running iOS 27.2. Software Update reports it is up to date on the selected iOS 27 Developer Beta channel. Do not infer that this establishes the latest public release or successful testing of the replacement build. No device name or serial number is needed in review documentation.
+
+## Shared video received October 4
+
+The developer supplied an anonymously accessible iCloud album with a 43.14-second current-app recording: https://photos.icloud.com/shared/album/0542IGMhnTCpCCdozCGMXRlbw . The album displays expiration November 3. Home Screen, both display modes, external source pages, and return to NewsDrip were observed. Refresh and exact build number remain unverified. The clip displays legacy feeds, so a final recording of the replacement build is still pending.

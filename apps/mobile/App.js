@@ -3,6 +3,8 @@ import {
   Animated,
   Easing,
   Linking,
+  Modal,
+  ScrollView,
   NativeModules,
   Platform,
   Pressable,
@@ -13,6 +15,7 @@ import {
   View
 } from 'react-native';
 import Constants from 'expo-constants';
+import legalContent from './legal-content.json';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -398,6 +401,7 @@ function LoadingDrip() {
 }
 
 export default function App() {
+  const [legalPage, setLegalPage] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -594,8 +598,8 @@ export default function App() {
           ListFooterComponent={
             <View style={styles.footer}>
               <Text style={styles.sourceCredit}>Original headlines from independently published sources.</Text>
-              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => openLink(`${API_BASE_CANDIDATES[0]}/content-sources`)}>Sources & licenses</Text>
-              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => openLink(`${API_BASE_CANDIDATES[0]}/privacy-policy`)}>Privacy policy</Text>
+              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => setLegalPage('sources')}>Sources & licenses</Text>
+              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => setLegalPage('privacy')}>Privacy policy</Text>
             </View>
           }
           onScroll={onListScroll}
@@ -610,11 +614,41 @@ export default function App() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNews(true)} />}
         />
       </SafeAreaView>
+      <Modal visible={legalPage !== null} animationType="slide" onRequestClose={() => setLegalPage(null)}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.legalHeader}>
+            <Text style={styles.legalHeading}>{legalPage === 'sources' ? 'Sources & licenses' : 'Privacy policy'}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close information" onPress={() => setLegalPage(null)} style={styles.legalClose}>
+              <Text style={styles.legalCloseText}>Done</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.legalContent}>
+            {(legalContent[legalPage] || []).map((block, index) => (
+              <Text key={index} style={block.type === 'h1' || block.type === 'h2' ? styles.legalHeading : styles.legalBody}>
+                {block.type === 'li' ? '• ' : ''}
+                {block.runs.map((run, runIndex) => (
+                  <Text key={runIndex} style={run.href ? styles.legalLink : undefined} accessibilityRole={run.href ? 'link' : undefined}
+                    onPress={run.href ? () => run.href === '/' ? setLegalPage(null) : run.href === '/privacy-policy' ? setLegalPage('privacy') : openLink(run.href) : undefined}>
+                    {run.text}{runIndex < block.runs.length - 1 ? ' ' : ''}
+                  </Text>
+                ))}
+              </Text>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  legalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderColor: '#ccc' },
+  legalContent: { padding: 20, paddingBottom: 40 },
+  legalHeading: { fontSize: 20, lineHeight: 28, fontWeight: '700', color: '#181818', marginBottom: 12, flexShrink: 1 },
+  legalBody: { fontSize: 16, lineHeight: 24, color: '#333', marginBottom: 16 },
+  legalLink: { color: '#8f1717', textDecorationLine: 'underline' },
+  legalClose: { minHeight: 44, minWidth: 60, justifyContent: 'center', alignItems: 'center' },
+  legalCloseText: { color: '#8f1717', fontSize: 17, fontWeight: '600' },
   attribution: { marginBottom: 8 },
   sourceCredit: { fontSize: 12, lineHeight: 17, color: '#555' },
   licenseLink: { fontSize: 12, lineHeight: 18, color: '#8f1717', textDecorationLine: 'underline', paddingVertical: 5 },

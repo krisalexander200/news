@@ -8,7 +8,9 @@ Thank you for reviewing NewsDrip. Below is the requested information.
 
 ## 1. Physical-device demonstration
 
-[PENDING: recording URL or attachment, replacement build number, physical iPhone model, and latest installed iOS version.]
+Device provided by developer: iPhone 17 Pro, iOS 27.2. Supplied Settings screenshots show Software Update reporting “iOS is up to date”; the selected update channel is iOS 27 Developer Beta. This confirms the displayed device/OS configuration, not completed app testing or the latest public release.
+
+[PENDING: replacement-build recording URL or attachment, build number, and successful physical-device testing. Describe the actual tested OS accurately when submitting.]
 
 ## 2. Purpose and audience
 
@@ -45,3 +47,9 @@ Thank you.
 Use the replacement TestFlight build, not rejected build 8 or a simulator. Begin on the Home Screen, launch NewsDrip, let headlines load, scroll, toggle TLDR, open an original article, return, and pull down to refresh. Include device model, iOS version, and build number. A continuous 30–45 second recording should cover these flows. Share a review-accessible link if attachment size is a problem.
 
 The previously supplied 7.38-second clip shows the old app already open and article navigation. It does not establish launch, display toggling, return, refresh, current build, or device/OS details.
+
+## Shared recording inspection — October 4, 2026
+
+Developer provided https://photos.icloud.com/shared/album/0542IGMhnTCpCCdozCGMXRlbw . The album was accessible without signing in and displayed one video of approximately 43 seconds, with expiration November 3. Browser player reports 43.14 seconds. Download attempts did not complete; inspection used the browser player.
+
+Observed: recording begins on the iPhone Home Screen; NewsDrip is visible by approximately three seconds in detailed mode, and later appears in compact mode. TASS and BBC source pages load, and NewsDrip is visible again at the end. A pull-to-refresh interaction was not verified. No build number is shown. The video contains the legacy publisher feeds and excerpts, so it does not verify the revised attribution-only implementation or replacement signed build. Retain it as evidence of the existing app flow; do not label it as the new build demonstration.

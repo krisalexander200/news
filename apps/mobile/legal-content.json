@@ -1,0 +1,417 @@
+{
+  "sources": [
+    {
+      "type": "h1",
+      "runs": [
+        {
+          "text": "Sources & licenses",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "NewsDrip helps you discover independently published news. We display original headlines with source credits and links to the full articles. We do not reproduce article images or full article text, and we do not rewrite headlines with AI.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Global Voices",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Eligible original headlines are credited to the named author and Global Voices, with a link to the original article. Unless otherwise stated, Global Voices-created content is available under",
+          "href": null
+        },
+        {
+          "text": "Creative Commons Attribution 3.0",
+          "href": "https://creativecommons.org/licenses/by/3.0/"
+        },
+        {
+          "text": ". See the",
+          "href": null
+        },
+        {
+          "text": "republishing guidelines",
+          "href": "https://globalvoices.org/about/global-voices-attribution-policy/"
+        },
+        {
+          "text": ". Guest and visibly restricted partner entries are excluded from this feed. Third-party images and media are not included.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Wikinews",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Wikinews is now an archive. Articles older than 30 days are excluded from the current feed, so it currently contributes no headlines.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Headlines are credited to Wikinews contributors and linked to the original page. Text created from December 16, 2024 uses",
+          "href": null
+        },
+        {
+          "text": "Creative Commons Attribution 4.0",
+          "href": "https://creativecommons.org/licenses/by/4.0/"
+        },
+        {
+          "text": "; earlier eligible text from September 25, 2005 uses",
+          "href": null
+        },
+        {
+          "text": "Attribution 2.5",
+          "href": "https://creativecommons.org/licenses/by/2.5/"
+        },
+        {
+          "text": ". Each story shows its applicable license. See the",
+          "href": null
+        },
+        {
+          "text": "copyright policy",
+          "href": "https://en.wikinews.org/wiki/Wikinews:Copyright"
+        },
+        {
+          "text": ".",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "How content is used",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Headline wording is preserved. Feed markup is converted to plain text for display. Source attribution and license links remain visible in both display modes. Licensed article excerpts and photographs are not displayed. Publisher links open the original website, whose privacy policy and access conditions apply.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Publishers and authors do not endorse NewsDrip. Names identify the original sources, not a partnership. NewsDrip does not claim ownership of their work.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Contact",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "For corrections or content questions,",
+          "href": null
+        },
+        {
+          "text": "contact NewsDrip",
+          "href": "https://github.com/krisalexander200/news/issues"
+        },
+        {
+          "text": ".",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Back to NewsDrip",
+          "href": "/"
+        },
+        {
+          "text": "·",
+          "href": null
+        },
+        {
+          "text": "Privacy policy",
+          "href": "/privacy-policy"
+        }
+      ]
+    }
+  ],
+  "privacy": [
+    {
+      "type": "h1",
+      "runs": [
+        {
+          "text": "NewsDrip Privacy Policy",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Effective date: October 3, 2026",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "This Privacy Policy explains how NewsDrip (\"we\", \"us\", or \"our\") handles information when you use the NewsDrip mobile app and web app.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Information We Collect",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "NewsDrip is designed to minimize data collection.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "li",
+      "runs": [
+        {
+          "text": "We do not require account registration.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "li",
+      "runs": [
+        {
+          "text": "We do not ask you to provide personal profile information to use the app.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "li",
+      "runs": [
+        {
+          "text": "We do not sell personal data.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Our hosting provider may automatically process technical request data such as IP address, device/browser metadata, and server logs for security, reliability, and diagnostics.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "How We Use Information",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "li",
+      "runs": [
+        {
+          "text": "To deliver news headlines from sources with documented reuse permissions.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "li",
+      "runs": [
+        {
+          "text": "To operate, secure, and debug the service.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "li",
+      "runs": [
+        {
+          "text": "To improve reliability and performance.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Data Sources and Sharing",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "News headlines are aggregated by our backend from Global Voices RSS and the Wikinews public API. The app does not send user content to an AI service and does not display third-party article images. When you open an article, you are sent to that publisher's website and their privacy policy applies there.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "We may use third-party infrastructure providers (such as cloud hosting) to run the service. These providers may process technical data needed to host and secure the app.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Data Retention",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "News items are cached briefly to improve performance. Technical logs are retained only as needed for operations, security, and legal compliance, based on provider defaults and our operational needs.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Children's Privacy",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "NewsDrip is not directed to children under 13, and we do not knowingly collect personal information from children.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Your Rights",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Depending on your location, you may have rights related to access, deletion, or objection regarding personal information. Because we do not maintain user accounts or user profiles, our ability to identify and act on a specific request may be limited.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Changes to This Policy",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "We may update this policy from time to time. The \"Effective date\" at the top indicates the latest revision date.",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "h2",
+      "runs": [
+        {
+          "text": "Contact",
+          "href": null
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "For privacy questions, contact us via:",
+          "href": null
+        },
+        {
+          "text": "https://github.com/krisalexander200/news/issues",
+          "href": "https://github.com/krisalexander200/news/issues"
+        }
+      ]
+    }
+  ]
+}
