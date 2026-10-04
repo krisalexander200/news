@@ -13,7 +13,7 @@
       "type": "p",
       "runs": [
         {
-          "text": "NewsDrip helps you discover independently published news. We display original headlines with source credits and links to the full articles. We do not reproduce article images or full article text, and we do not rewrite headlines with AI.",
+          "text": "NewsDrip helps you discover independently published news. We display headlines with source credits and links to the full articles. We do not reproduce article images or full article text, and we do not rewrite headlines with AI.",
           "href": null
         }
       ]
@@ -31,7 +31,7 @@
       "type": "p",
       "runs": [
         {
-          "text": "Eligible original headlines are credited to the named author and Global Voices, with a link to the original article. Unless otherwise stated, Global Voices-created content is available under",
+          "text": "Eligible headlines are credited to the named author and Global Voices, with a link to the original article. Unless otherwise stated, Global Voices-created content is available under",
           "href": null
         },
         {

@@ -368,7 +368,7 @@ body {
 
 .source-credit { margin: 0 0 2px; font-size: 0.8rem; color: #555; }
 .license-link { display: inline-block; padding: 5px 0; font-size: 0.8rem; color: #8f1717; }
-.attribution { margin-bottom: 8px; }
+.attribution { margin-top: 8px; margin-bottom: 4px; }
 .urgent-lead .attribution { text-align: center; }
 .related-links .source-credit, .related-links .license-link { font-size: 0.75rem; font-weight: 400; }
 .sources-footer { padding: 24px 0; color: #555; font-size: 0.85rem; }

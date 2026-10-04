@@ -224,8 +224,9 @@ function appendAttribution(container, item) {
   license.href = item.licenseUrl;
   license.target = '_blank';
   license.rel = 'noopener noreferrer';
-  license.textContent = `${item.licenseName} · Original headline`;
-  container.append(credit, license);
+  license.textContent = item.licenseName || '';
+  container.appendChild(credit);
+  if (item.licenseName && item.licenseUrl) container.appendChild(license);
 }
 
 function renderRelatedLinks(relatedStories) {
@@ -233,13 +234,13 @@ function renderRelatedLinks(relatedStories) {
   relatedLinksEl.hidden = !relatedStories.length;
   for (const story of relatedStories) {
     const row = document.createElement('div');
-    appendAttribution(row, story);
     const link = document.createElement('a');
     link.href = story.link;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = story.title;
     row.appendChild(link);
+    appendAttribution(row, story);
     relatedLinksEl.appendChild(row);
   }
 }
