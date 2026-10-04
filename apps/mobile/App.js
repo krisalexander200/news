@@ -543,7 +543,6 @@ export default function App() {
         <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
       </Pressable>
       {renderAttribution(item)}
-      {!tldrMode ? <Text style={styles.storyDetail}>{formatTime(item.publishedAt)} · Read the full article at the source</Text> : null}
     </View>
   );
 

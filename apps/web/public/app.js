@@ -255,8 +255,8 @@ function renderUrgentStory(item, relatedStories) {
   attribution.replaceChildren();
   appendAttribution(attribution, item);
   renderRelatedLinks(relatedStories);
-  urgentDetailEl.hidden = tldrMode;
-  urgentDetailEl.textContent = `${formatTime(item.publishedAt)} · Read the full article at the source`;
+  urgentDetailEl.hidden = true;
+  urgentDetailEl.textContent = '';
 }
 
 function appendStory(container, item) {
@@ -266,8 +266,8 @@ function appendStory(container, item) {
   appendAttribution(node.querySelector('.attribution'), item);
   titleLink.href = item.link;
   titleLink.textContent = item.title;
-  detail.hidden = tldrMode;
-  detail.textContent = `${formatTime(item.publishedAt)} · Read the full article at the source`;
+  detail.hidden = true;
+  detail.textContent = '';
   container.appendChild(node);
 }
 
