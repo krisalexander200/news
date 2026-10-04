@@ -3,7 +3,6 @@ import {
   Animated,
   Easing,
   Linking,
-  Image,
   NativeModules,
   Platform,
   Pressable,
@@ -152,8 +151,6 @@ const STOP_WORDS = new Set([
   'from', 'have', 'into', 'just', 'more', 'most', 'over', 'said', 'than', 'that', 'their', 'there', 'these', 'they', 'this',
   'those', 'through', 'under', 'very', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would'
 ]);
-const FEATURED_SOURCE_PRIORITY = new Set(['CNN', 'DRUDGE REPORT', 'NEW YORK POST']);
-const failedImageUrls = new Set();
 
 const NON_LATIN_SCRIPT_PATTERN = /[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u3400-\u9FFF]/;
 
@@ -234,25 +231,7 @@ function pickTopByUrgency(items) {
 }
 
 function pickFeaturedStory(items) {
-  if (!items.length) {
-    return null;
-  }
-
-  const drudgeLead = items.find(
-    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
-  );
-  if (drudgeLead) {
-    return drudgeLead;
-  }
-
-  const prioritized = items.filter((item) =>
-    FEATURED_SOURCE_PRIORITY.has(String(item.source || '').trim().toUpperCase())
-  );
-  if (prioritized.length) {
-    return pickTopByUrgency(prioritized);
-  }
-
-  return pickTopByUrgency(items);
+  return items.length ? pickTopByUrgency(items) : null;
 }
 
 function isLikelyEnglishTitle(text) {
@@ -282,7 +261,7 @@ function classifyTopic(item) {
   for (const rule of TOPIC_RULES) {
     let score = 0;
     for (const keyword of rule.keywords) {
-      if (text.includes(keyword)) {
+      if (new RegExp(`\\b${keyword}\\b`, 'i').test(text)) {
         score += 1;
       }
     }
@@ -336,59 +315,30 @@ function pickRelatedStories(anchorStory, pool) {
     return [];
   }
 
-  const anchorTopic = classifyTopic(anchorStory);
-  const anchorTokens = tokenize(`${anchorStory.title} ${anchorStory.tldr}`);
+  // Match source headlines: rewritten titles and summaries can add generic words.
+  const anchorTokens = [...new Set(tokenize(anchorStory.originalTitle || anchorStory.title))];
 
   return pool
     .filter((item) => item.id !== anchorStory.id)
     .map((item) => {
-      const itemTopic = classifyTopic(item);
-      const shared = overlapCount(anchorTokens, tokenize(`${item.title} ${item.tldr}`));
-      let score = 0;
-      if (itemTopic === anchorTopic) {
-        score += 2;
-      }
-      score += Math.min(shared, 4);
-      if (item.source === anchorStory.source) {
-        score += 1;
-      }
+      const itemTokens = [...new Set(tokenize(item.originalTitle || item.title))];
+      const shared = overlapCount(anchorTokens, itemTokens);
+      const coverage = shared / Math.max(1, Math.min(anchorTokens.length, itemTokens.length));
 
       return {
         item,
-        score,
-        timestamp: item.publishedAt ? Date.parse(item.publishedAt) : 0
+        shared,
+        coverage,
+        timestamp: item.publishedAt ? Date.parse(item.publishedAt) || 0 : 0
       };
     })
-    .filter((entry) => entry.score >= 2)
-    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
-    .slice(0, 4)
+    // Category and publisher alone never establish a connection.
+    .filter((entry) => entry.shared >= 3 && entry.coverage >= 0.5)
+    .sort((a, b) => b.coverage - a.coverage || b.shared - a.shared || b.timestamp - a.timestamp)
+    .slice(0, 3)
     .map((entry) => entry.item);
 }
 
-function FeedImage({ uri, style, accessibilityLabel }) {
-  const [failed, setFailed] = useState(() => failedImageUrls.has(uri));
-
-  useEffect(() => {
-    setFailed(failedImageUrls.has(uri));
-  }, [uri]);
-
-  if (!uri || failed) {
-    return null;
-  }
-
-  return (
-    <Image
-      source={{ uri }}
-      style={style}
-      resizeMode="cover"
-      accessibilityLabel={accessibilityLabel}
-      onError={() => {
-        failedImageUrls.add(uri);
-        setFailed(true);
-      }}
-    />
-  );
-}
 
 function LoadingDrip() {
   const progress = useRef(new Animated.Value(0)).current;
@@ -470,10 +420,6 @@ export default function App() {
 
   const relatedStories = useMemo(() => pickRelatedStories(featuredStory, listItems), [featuredStory, listItems]);
   const groupedStories = useMemo(() => groupStories(listItems), [listItems]);
-  const imageStoryIds = useMemo(
-    () => new Set(groupedStories.map((group) => group.items.find((item) => item.image)?.id).filter(Boolean)),
-    [groupedStories]
-  );
   const sections = useMemo(
     () =>
       groupedStories.map((group) => ({
@@ -488,7 +434,7 @@ export default function App() {
     try {
       await Linking.openURL(url);
     } catch {
-      // Ignore link failures and keep UI responsive.
+      setLoadError('The link could not open. Please try again.');
     }
   }, []);
 
@@ -513,9 +459,9 @@ export default function App() {
         }
 
         setItems(filteredItems);
+        if (data.stale) setLoadError('Showing previously loaded headlines. Pull down to try updating again.');
       } catch (error) {
-        const attempted = API_BASE_CANDIDATES.join(', ');
-        setLoadError(`Could not load feed. Tried: ${attempted}. ${error.message || 'Unknown error'}`);
+        setLoadError('News could not load. Check your connection and pull down to try again.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -573,49 +519,51 @@ export default function App() {
     </View>
   );
 
+  const renderAttribution = (item) => (
+    <View style={styles.attribution}>
+      <Text style={styles.sourceCredit}>{item.attribution || item.source}</Text>
+      <Text
+        style={styles.licenseLink}
+        accessibilityRole="link"
+        accessibilityLabel={`${item.licenseName} license for ${item.title}`}
+        onPress={() => openLink(item.licenseUrl)}
+      >
+        {item.licenseName} · Original headline
+      </Text>
+    </View>
+  );
+
   const renderStory = ({ item }) => (
-    <Pressable style={styles.story} onPress={() => openLink(item.link)}>
-      {imageStoryIds.has(item.id) ? (
-        <FeedImage uri={item.image} style={styles.storyImage} accessibilityLabel={item.title} />
-      ) : null}
-      <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
-      {!tldrMode ? (
-        <Text style={styles.storyDetail}>
-          {item.source} {formatTime(item.publishedAt)} - {item.tldr}
-        </Text>
-      ) : null}
-    </Pressable>
+    <View style={styles.story}>
+      {renderAttribution(item)}
+      <Pressable accessibilityRole="link" onPress={() => openLink(item.link)}>
+        <Text style={[styles.storyTitle, tldrMode ? styles.storyTitleCompact : null]}>{item.title}</Text>
+      </Pressable>
+      {!tldrMode ? <Text style={styles.storyDetail}>{formatTime(item.publishedAt)} · Read the full article at the source</Text> : null}
+    </View>
   );
 
   const renderListHeader = () => (
     <View>
       {featuredStory ? (
-        <Pressable style={styles.featured} onPress={() => openLink(featuredStory.link)}>
-          {featuredStory.image && String(featuredStory.source || '').toUpperCase() !== 'DRUDGE REPORT' ? (
-            <FeedImage
-              uri={featuredStory.image}
-              style={styles.featuredImage}
-              accessibilityLabel={featuredStory.title}
-            />
-          ) : null}
-          <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
-            {featuredStory.title}
-          </Text>
-
+        <View style={styles.featured}>
+          {renderAttribution(featuredStory)}
+          <Pressable accessibilityRole="link" onPress={() => openLink(featuredStory.link)}>
+            <Text style={[styles.featuredTitle, tldrMode ? styles.featuredTitleCompact : null]}>
+              {featuredStory.title}
+            </Text>
+          </Pressable>
           {relatedStories.length ? (
             <View style={styles.relatedList}>
               {relatedStories.map((item) => (
-                <Text
-                  key={item.id}
-                  style={styles.relatedItem}
-                  onPress={() => openLink(item.link)}
-                >
-                  {item.title}
-                </Text>
+                <View key={item.id} style={styles.relatedItem}>
+                  {renderAttribution(item)}
+                  <Text accessibilityRole="link" onPress={() => openLink(item.link)}>{item.title}</Text>
+                </View>
               ))}
             </View>
           ) : null}
-        </Pressable>
+        </View>
       ) : null}
 
       {renderTopBar(true)}
@@ -643,6 +591,13 @@ export default function App() {
           )}
           stickySectionHeadersEnabled
           ListHeaderComponent={renderListHeader}
+          ListFooterComponent={
+            <View style={styles.footer}>
+              <Text style={styles.sourceCredit}>Original headlines from independently published sources.</Text>
+              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => openLink(`${API_BASE_CANDIDATES[0]}/content-sources`)}>Sources & licenses</Text>
+              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => openLink(`${API_BASE_CANDIDATES[0]}/privacy-policy`)}>Privacy policy</Text>
+            </View>
+          }
           onScroll={onListScroll}
           scrollEventThrottle={16}
           ListEmptyComponent={
@@ -660,6 +615,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  attribution: { marginBottom: 8 },
+  sourceCredit: { fontSize: 12, lineHeight: 17, color: '#555' },
+  licenseLink: { fontSize: 12, lineHeight: 18, color: '#8f1717', textDecorationLine: 'underline', paddingVertical: 5 },
+  footer: { paddingVertical: 24, gap: 4 },
   safeArea: {
     flex: 1,
     backgroundColor: '#f4f1ea'
@@ -835,8 +794,8 @@ const styles = StyleSheet.create({
     color: '#181818'
   },
   storyTitleCompact: {
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '600',
     color: '#000'
   },

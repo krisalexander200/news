@@ -8,3 +8,7 @@ apps/mobile/.expo-shared
 apps/mobile/.env
 /app.json
 /eas.json
+
+.pnpm-store/
+apps/mobile/dist/
+apps/mobile/build/

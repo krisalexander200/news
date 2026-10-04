@@ -4,7 +4,6 @@ const tldrBtnEl = document.getElementById('tldrBtn');
 const topbarEl = document.querySelector('.topbar');
 const storyTemplate = document.getElementById('storyTemplate');
 const urgentLeadEl = document.getElementById('urgentLead');
-const urgentImageEl = document.getElementById('urgentImage');
 const urgentTitleLinkEl = document.getElementById('urgentTitleLink');
 const relatedLinksEl = document.getElementById('relatedLinks');
 const urgentDetailEl = document.getElementById('urgentDetail');
@@ -52,7 +51,6 @@ const STOP_WORDS = new Set([
   'from', 'have', 'into', 'just', 'more', 'most', 'over', 'said', 'than', 'that', 'their', 'there', 'these', 'they', 'this',
   'those', 'through', 'under', 'very', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would'
 ]);
-const FEATURED_SOURCE_PRIORITY = new Set(['CNN', 'DRUDGE REPORT', 'NEW YORK POST']);
 
 function isLikelyEnglishTitle(text) {
   const value = String(text || '').trim();
@@ -167,25 +165,7 @@ function pickTopByUrgency(items) {
 }
 
 function pickUrgentStory(items) {
-  if (!items.length) {
-    return null;
-  }
-
-  const drudgeLead = items.find(
-    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
-  );
-  if (drudgeLead) {
-    return drudgeLead;
-  }
-
-  const prioritized = items.filter((item) =>
-    FEATURED_SOURCE_PRIORITY.has(String(item.source || '').trim().toUpperCase())
-  );
-  if (prioritized.length) {
-    return pickTopByUrgency(prioritized);
-  }
-
-  return pickTopByUrgency(items);
+  return items.length ? pickTopByUrgency(items) : null;
 }
 
 function tokenize(text) {
@@ -211,104 +191,82 @@ function pickRelatedStories(anchorStory, pool) {
     return [];
   }
 
-  const anchorTopic = classifyTopic(anchorStory);
-  const anchorTokens = tokenize(`${anchorStory.title} ${anchorStory.tldr}`);
+  // Match source headlines: rewritten titles and summaries can add generic words.
+  const anchorTokens = [...new Set(tokenize(anchorStory.originalTitle || anchorStory.title))];
 
-  const ranked = pool
+  return pool
     .filter((item) => item.id !== anchorStory.id)
     .map((item) => {
-      const itemTopic = classifyTopic(item);
-      const itemTokens = tokenize(`${item.title} ${item.tldr}`);
+      const itemTokens = [...new Set(tokenize(item.originalTitle || item.title))];
       const shared = overlapCount(anchorTokens, itemTokens);
-
-      let score = 0;
-      if (itemTopic === anchorTopic) {
-        score += 2;
-      }
-      score += Math.min(shared, 4);
-      if (item.source === anchorStory.source) {
-        score += 1;
-      }
+      const coverage = shared / Math.max(1, Math.min(anchorTokens.length, itemTokens.length));
 
       return {
         item,
-        score,
-        timestamp: item.publishedAt ? Date.parse(item.publishedAt) : 0
+        shared,
+        coverage,
+        timestamp: item.publishedAt ? Date.parse(item.publishedAt) || 0 : 0
       };
     })
-    .filter((entry) => entry.score >= 2)
-    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
-    .slice(0, 4)
+    // Category and publisher alone never establish a connection.
+    .filter((entry) => entry.shared >= 3 && entry.coverage >= 0.5)
+    .sort((a, b) => b.coverage - a.coverage || b.shared - a.shared || b.timestamp - a.timestamp)
+    .slice(0, 3)
     .map((entry) => entry.item);
+}
 
-  return ranked;
+function appendAttribution(container, item) {
+  const credit = document.createElement('p');
+  credit.className = 'source-credit';
+  credit.textContent = item.attribution || item.source;
+  const license = document.createElement('a');
+  license.className = 'license-link';
+  license.href = item.licenseUrl;
+  license.target = '_blank';
+  license.rel = 'noopener noreferrer';
+  license.textContent = `${item.licenseName} · Original headline`;
+  container.append(credit, license);
 }
 
 function renderRelatedLinks(relatedStories) {
-  relatedLinksEl.innerHTML = '';
-
-  if (!relatedStories.length) {
-    relatedLinksEl.hidden = true;
-    return;
-  }
-
-  relatedLinksEl.hidden = false;
+  relatedLinksEl.replaceChildren();
+  relatedLinksEl.hidden = !relatedStories.length;
   for (const story of relatedStories) {
+    const row = document.createElement('div');
+    appendAttribution(row, story);
     const link = document.createElement('a');
     link.href = story.link;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = story.title;
-    relatedLinksEl.appendChild(link);
+    row.appendChild(link);
+    relatedLinksEl.appendChild(row);
   }
 }
 
 function renderUrgentStory(item, relatedStories) {
-  if (!item) {
-    urgentLeadEl.hidden = true;
-    urgentStoryId = null;
-    renderRelatedLinks([]);
-    return;
-  }
-
-  urgentStoryId = item.id;
-  urgentLeadEl.hidden = false;
-
+  urgentLeadEl.hidden = !item;
+  urgentStoryId = item ? item.id : null;
+  if (!item) return;
   urgentTitleLinkEl.href = item.link;
   urgentTitleLinkEl.textContent = item.title;
-  urgentImageEl.onerror = () => {
-    urgentImageEl.hidden = true;
-    urgentImageEl.removeAttribute('src');
-  };
-  const showUrgentImage = item.image && String(item.source || '').toUpperCase() !== 'DRUDGE REPORT';
-  urgentImageEl.hidden = !showUrgentImage;
-  urgentImageEl.src = showUrgentImage ? item.image : '';
-  urgentImageEl.alt = showUrgentImage ? item.title : '';
+  const attribution = document.getElementById('urgentAttribution');
+  attribution.replaceChildren();
+  appendAttribution(attribution, item);
   renderRelatedLinks(relatedStories);
-  urgentDetailEl.hidden = true;
-  urgentDetailEl.textContent = '';
+  urgentDetailEl.hidden = tldrMode;
+  urgentDetailEl.textContent = `${formatTime(item.publishedAt)} · Read the full article at the source`;
 }
 
-function appendStory(container, item, showImage = false) {
+function appendStory(container, item) {
   const node = storyTemplate.content.cloneNode(true);
   const titleLink = node.querySelector('h2 a');
   const detail = node.querySelector('.detail');
-  const image = node.querySelector('.story-image');
-
+  appendAttribution(node.querySelector('.attribution'), item);
   titleLink.href = item.link;
   titleLink.textContent = item.title;
-  image.onerror = () => {
-    image.hidden = true;
-    image.removeAttribute('src');
-  };
-  image.hidden = !showImage;
-  image.src = showImage ? item.image : '';
-  image.alt = showImage ? item.title : '';
   detail.hidden = tldrMode;
-  if (!tldrMode) {
-    detail.textContent = `${item.source} ${formatTime(item.publishedAt)} - ${item.tldr}`;
-  }
-
+  detail.textContent = `${formatTime(item.publishedAt)} · Read the full article at the source`;
   container.appendChild(node);
 }
 
@@ -320,7 +278,7 @@ function classifyTopic(item) {
   for (const rule of TOPIC_RULES) {
     let score = 0;
     for (const keyword of rule.keywords) {
-      if (text.includes(keyword)) {
+      if (new RegExp(`\\b${keyword}\\b`, 'i').test(text)) {
         score += 1;
       }
     }
@@ -363,10 +321,7 @@ function renderGrouped(items) {
 
     const list = document.createElement('div');
     list.className = 'topic-list';
-    const imageIndex = group.items.findIndex((item) => item.image);
-    for (const [index, item] of group.items.entries()) {
-      appendStory(list, item, index === imageIndex);
-    }
+    for (const item of group.items) appendStory(list, item);
 
     section.appendChild(list);
     newsListEl.appendChild(section);
@@ -409,9 +364,9 @@ function syncStickyOffsets() {
   document.documentElement.style.setProperty('--sticky-topbar-height', `${topbarHeight}px`);
 }
 
-async function loadNews() {
+async function loadNews(forceRefresh = false) {
   try {
-    const response = await fetch('/api/news');
+    const response = await fetch(forceRefresh ? '/api/news?refresh=1' : '/api/news');
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -421,8 +376,13 @@ async function loadNews() {
     latestItems = items;
     renderStories(items);
     showErrors(data.errors || []);
+    if (data.stale) {
+      errorBoxEl.hidden = false;
+      errorBoxEl.textContent = 'Showing previously loaded headlines. Tap Refresh to try updating again.';
+    }
   } catch (error) {
-    showErrors([{ source: 'Aggregator', error: error.message || 'Unknown error' }]);
+    errorBoxEl.hidden = false;
+    errorBoxEl.textContent = 'News could not load. Check your connection and tap Refresh to try again.';
   }
 }
 
@@ -437,3 +397,9 @@ window.addEventListener('resize', syncStickyOffsets);
 syncStickyOffsets();
 syncTldrButton();
 loadNews();
+
+const refreshBtn = document.getElementById('refreshBtn');
+refreshBtn.addEventListener('click', async () => {
+  refreshBtn.disabled = true;
+  try { await loadNews(true); } finally { refreshBtn.disabled = false; }
+});

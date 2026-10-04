@@ -1,7 +1,5 @@
 const crypto = require('node:crypto');
-const os = require('node:os');
 const path = require('node:path');
-
 const express = require('express');
 const { XMLParser } = require('fast-xml-parser');
 const he = require('he');
@@ -10,819 +8,151 @@ const app = express();
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
 const CACHE_TTL_MS = 3 * 60 * 1000;
-const FEED_ITEM_LIMIT = 40;
 const FEED_TIMEOUT_MS = 8000;
-const RESULT_LIMIT = 114;
-const HEADLINE_REWRITE_MODEL = process.env.HEADLINE_REWRITE_MODEL || 'gpt-5-nano';
-const HEADLINE_REWRITE_TIMEOUT_MS = 45000;
-const HEADLINE_REWRITE_BATCH_SIZE = 40;
-const HEADLINE_REWRITE_CACHE_LIMIT = 2000;
-const DRUDGE_FEED_URL = 'https://feedpress.me/drudgereportfeed';
-
+const RESULT_LIMIT = 80;
+const USER_AGENT = 'NewsDrip/1.0 (https://github.com/krisalexander200/news)';
+// Only sources with documented reuse permissions belong in this allowlist.
+// Images and AI rewriting are deliberately absent from the release pipeline.
 const SOURCES = [
-  { name: 'BBC', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
-  { name: 'CNN', url: 'https://rss.cnn.com/rss/edition.rss' },
-  { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml' },
-  { name: 'NYTimes', url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml' },
-  { name: 'DEADLINE', url: 'https://deadline.com/feed/' },
-  { name: 'NEW YORK POST', url: 'https://nypost.com/feed/' },
-  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
-  { name: 'HACKER NEWS', url: 'https://news.ycombinator.com/rss' },
-  { name: 'AGENCE FRANCE-PRESSE', url: 'https://news.google.com/rss/search?q=site%3Aafp.com&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'AP TOP', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com%20%22AP%20Top%20News%22&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'AP RADIO', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com%20audio&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'BLOOMBERG', url: 'https://feeds.bloomberg.com/markets/news.rss' },
-  { name: 'DEUTSCHE PRESSE-AGENTUR', url: 'https://news.google.com/rss/search?q=site%3Adpa-international.com&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'DEUTCHE WELLE', url: 'https://rss.dw.com/rdf/rss-en-all' },
-  { name: 'DRUDGE REPORT', url: DRUDGE_FEED_URL },
-  { name: 'INTERFAX', url: 'https://news.google.com/rss/search?q=site%3Ainterfax.com&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'ITAR-TASS', url: 'https://tass.com/rss/v2.xml' },
-  { name: 'KYODO', url: 'https://news.google.com/rss/search?q=site%3Aenglish.kyodonews.net&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'MCCLATCHY [DC]', url: 'https://news.google.com/rss/search?q=site%3Amcclatchydc.com&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'NHK', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml' },
-  { name: 'PRAVDA', url: 'https://news.google.com/rss/search?q=site%3Aenglish.pravda.ru&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'PRESS TRUST INDIA', url: 'https://news.google.com/rss/search?q=site%3Aptinews.com&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'REUTERS POLITICS WORLD', url: 'https://news.google.com/rss/search?q=site%3Areuters.com%2Fpolitics%20OR%20site%3Areuters.com%2Fworld&hl=en-US&gl=US&ceid=US%3Aen' },
-  { name: 'XINHUA', url: 'https://english.news.cn/rss/worldrss.xml' },
-  { name: 'YONHAP', url: 'https://en.yna.co.kr/RSS/news.xml' }
+  {
+    name: 'Global Voices',
+    url: 'https://globalvoices.org/feed/',
+    host: 'globalvoices.org',
+    licenseName: 'CC BY 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/3.0/',
+    policyUrl: 'https://globalvoices.org/about/global-voices-attribution-policy/'
+  },
+  {
+    name: 'Wikinews',
+    url: 'https://en.wikinews.org/w/api.php',
+    host: 'en.wikinews.org',
+    policyUrl: 'https://en.wikinews.org/wiki/Wikinews:Copyright'
+  }
 ];
-
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  textNodeName: '#text',
-  trimValues: true
-});
-
-const cache = {
-  data: null,
-  expiresAt: 0,
-  pending: null
-};
-
-const headlineRewriteCache = new Map();
-
-const NON_LATIN_SCRIPT_PATTERN =
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Hebrew}]/u;
-const SOURCE_DEDUPE_PRIORITY = new Map([
-  ['DRUDGE REPORT', 3],
-  ['CNN', 2],
-  ['NEW YORK POST', 1]
-]);
-
-function asArray(value) {
-  if (value === undefined || value === null) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
-}
-
+const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', textNodeName: '#text' });
+const cache = { data: null, expiresAt: 0, pending: null };
+const asArray = (value) => value == null ? [] : Array.isArray(value) ? value : [value];
 function textValue(value) {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      const nested = textValue(entry);
-      if (nested) {
-        return nested;
-      }
-    }
-    return '';
-  }
-
-  if (value && typeof value === 'object') {
-    if (typeof value['#text'] === 'string') {
-      return value['#text'];
-    }
-    if (typeof value['@_href'] === 'string') {
-      return value['@_href'];
-    }
-    if (typeof value.href === 'string') {
-      return value.href;
-    }
-    if (typeof value.__cdata === 'string') {
-      return value.__cdata;
-    }
-  }
-
-  return '';
+  return typeof value === 'string' ? value : value && typeof value === 'object' ? textValue(value['#text']) : '';
 }
-
-function stripHtml(input) {
-  return input
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ');
+function cleanText(value) {
+  return he.decode(String(value || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
 }
-
-function cleanText(input) {
-  if (!input) {
-    return '';
-  }
-
-  return he
-    .decode(stripHtml(String(input)))
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function firstSentence(text) {
-  const split = text.split(/(?<=[.!?])\s+/);
-  if (!split.length) {
-    return text;
-  }
-  return split.find((piece) => piece.length > 30) || split[0] || text;
-}
-
-function limitWords(input, maxWords) {
-  const words = input.split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) {
-    return input;
-  }
-  return `${words.slice(0, maxWords).join(' ')}...`;
-}
-
-function isLikelyEnglishText(text) {
-  const cleaned = cleanText(text);
-  if (!cleaned) {
-    return false;
-  }
-
-  if (NON_LATIN_SCRIPT_PATTERN.test(cleaned)) {
-    return false;
-  }
-
-  const letters = cleaned.match(/\p{L}/gu) || [];
-  const asciiLetters = cleaned.match(/[A-Za-z]/g) || [];
-  if (!letters.length || !asciiLetters.length) {
-    return false;
-  }
-
-  const asciiRatio = asciiLetters.length / letters.length;
-  return asciiRatio >= 0.72;
-}
-
-function tldrFrom(item) {
-  const rawDescription = rawDescriptionFrom(item);
-
-  const cleanedDescription = cleanText(rawDescription);
-  if (cleanedDescription) {
-    return limitWords(firstSentence(cleanedDescription), 18);
-  }
-
-  const fallback = cleanText(textValue(item.title));
-  return limitWords(fallback || 'No summary available.', 14);
-}
-
-function rawDescriptionFrom(item) {
-  return (
-    textValue(item.description) ||
-    textValue(item.summary) ||
-    textValue(item['content:encoded']) ||
-    textValue(item.content)
-  );
-}
-
-function drudgeLeadScore(item) {
-  const raw = String(rawDescriptionFrom(item) || '');
-  if (!raw) {
-    return 0;
-  }
-
-  if (/\bmain headline,\s*1st\s*(?:story|link)\b/i.test(raw)) {
-    return 5;
-  }
-  if (/\bmain headline,\s*1st\b/i.test(raw)) {
-    return 4;
-  }
-  if (/\btop headline,\s*1st\s*(?:story|link)\b/i.test(raw)) {
-    return 3;
-  }
-  if (/\btop headline,\s*1st\b/i.test(raw)) {
-    return 2;
-  }
-  if (/\b1st\s*(?:story|link)\b/i.test(raw)) {
-    return 1;
-  }
-
-  return 0;
-}
-
-function selectDrudgeLeadItems(items) {
-  const ranked = (items || [])
-    .map((item) => ({ item, score: drudgeLeadScore(item) }))
-    .sort((a, b) => b.score - a.score);
-
-  if (!ranked.length) {
-    return [];
-  }
-
-  if (ranked[0].score <= 0) {
-    return [ranked[0].item];
-  }
-
-  return [ranked[0].item];
-}
-
-function extractDrudgeMainHeadlineLink(item) {
-  const raw = String(rawDescriptionFrom(item) || '');
-  if (!raw) {
-    return '';
-  }
-
-  const contextualMatch = raw.match(
-    /\((?:main|top)\sheadline,\s*1st\s*(?:story|link),\s*<a[^>]+href=["']([^"']+)["']/i
-  );
-  if (contextualMatch && contextualMatch[1]) {
-    return contextualMatch[1].trim();
-  }
-
-  return '';
-}
-
-function extractLink(item) {
-  if (typeof item.link === 'string') {
-    return item.link;
-  }
-
-  for (const linkValue of asArray(item.link)) {
-    if (typeof linkValue === 'string') {
-      return linkValue;
-    }
-
-    if (linkValue && typeof linkValue === 'object') {
-      if (typeof linkValue['@_href'] === 'string') {
-        return linkValue['@_href'];
-      }
-      if (typeof linkValue.href === 'string') {
-        return linkValue.href;
-      }
-    }
-  }
-
-  return '';
-}
-
-function extractDate(item) {
-  const raw =
-    textValue(item.pubDate) ||
-    textValue(item.published) ||
-    textValue(item.updated) ||
-    textValue(item['dc:date']);
-
-  const parsed = raw ? new Date(raw) : null;
-  if (!parsed || Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return parsed.toISOString();
-}
-
-function isHttpUrl(value) {
-  return /^https?:\/\//i.test((value || '').trim());
-}
-
-function isProbablyImageUrl(value) {
-  const url = (value || '').toLowerCase();
-  return (
-    /\.(avif|gif|jpe?g|png|webp)(?:$|[?#])/i.test(url) ||
-    url.includes('/image') ||
-    url.includes('/img') ||
-    url.includes('thumbnail') ||
-    url.includes('photo')
-  );
-}
-
-function findImageUrlInNode(node, parentMimeType = '', depth = 0) {
-  if (!node || depth > 4) {
-    return '';
-  }
-
-  if (typeof node === 'string') {
-    const trimmed = node.trim();
-    if (!isHttpUrl(trimmed)) {
-      return '';
-    }
-    return isProbablyImageUrl(trimmed) ? trimmed : '';
-  }
-
-  if (Array.isArray(node)) {
-    for (const entry of node) {
-      const found = findImageUrlInNode(entry, parentMimeType, depth + 1);
-      if (found) {
-        return found;
-      }
-    }
-    return '';
-  }
-
-  if (typeof node === 'object') {
-    const mimeType = typeof node['@_type'] === 'string' ? node['@_type'].toLowerCase() : parentMimeType;
-    const likelyImageType = !mimeType || mimeType.startsWith('image/');
-    const directKeys = ['@_url', '@_href', '@_src', 'url', 'href', 'src', '#text'];
-
-    for (const key of directKeys) {
-      const candidate = node[key];
-      if (typeof candidate !== 'string') {
-        continue;
-      }
-
-      const trimmed = candidate.trim();
-      if (!isHttpUrl(trimmed)) {
-        continue;
-      }
-
-      if (likelyImageType || isProbablyImageUrl(trimmed)) {
-        return trimmed;
-      }
-    }
-
-    for (const value of Object.values(node)) {
-      const found = findImageUrlInNode(value, mimeType, depth + 1);
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return '';
-}
-
-function imageFromDescription(item) {
-  const rawDescription = rawDescriptionFrom(item);
-  if (!rawDescription) {
-    return '';
-  }
-
-  const match = String(rawDescription).match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (!match || !match[1]) {
-    return '';
-  }
-
-  const candidate = match[1].trim();
-  return isHttpUrl(candidate) ? candidate : '';
-}
-
-function extractImage(item) {
-  const candidateNodes = [
-    item['media:content'],
-    item['media:thumbnail'],
-    item['media:group'],
-    item.enclosure,
-    item['itunes:image'],
-    item.image,
-    item.thumbnail
-  ];
-
-  for (const node of candidateNodes) {
-    const imageUrl = findImageUrlInNode(node);
-    if (imageUrl) {
-      return normalizeUrl(imageUrl);
-    }
-  }
-
-  const fromDescription = imageFromDescription(item);
-  return fromDescription ? normalizeUrl(fromDescription) : '';
-}
-
-function normalizeUrl(urlString) {
+function validArticleLink(value, host) {
   try {
-    const parsed = new URL(urlString);
-
-    const keep = [];
-    for (const [key, value] of parsed.searchParams.entries()) {
-      const lower = key.toLowerCase();
-      if (lower.startsWith('utm_') || lower === 'gclid' || lower === 'fbclid') {
-        continue;
-      }
-      keep.push([key, value]);
-    }
-
-    parsed.search = '';
-    for (const [key, value] of keep) {
-      parsed.searchParams.append(key, value);
-    }
-
-    return parsed.toString();
-  } catch {
-    return (urlString || '').trim();
-  }
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === host && !url.username && !url.password ? url.toString() : '';
+  } catch { return ''; }
 }
-
-function itemId(title, link) {
-  return crypto
-    .createHash('sha1')
-    .update(`${title}::${link}`)
-    .digest('hex')
-    .slice(0, 16);
+function dateFrom(value) {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
-
-function sourcePriority(sourceName) {
-  return SOURCE_DEDUPE_PRIORITY.get(String(sourceName || '').trim().toUpperCase()) || 0;
+function makeStory(source, title, link, author, publishedAt, licenseName, licenseUrl) {
+  return {
+    id: crypto.createHash('sha1').update(`${source.name}::${link}`).digest('hex').slice(0, 16),
+    source: source.name, title, originalTitle: title, link, author, publishedAt,
+    tldr: '', image: '',
+    attribution: `${author} · ${source.name}`,
+    licenseName, licenseUrl, policyUrl: source.policyUrl,
+    changes: 'Original headline; article text and images are not reproduced.'
+  };
 }
-
-function getRawItems(xml) {
-  const rssItems = asArray(xml?.rss?.channel?.item);
-  if (rssItems.length) {
-    return rssItems;
-  }
-
-  const rdfItems = asArray(xml?.['rdf:RDF']?.item);
-  if (rdfItems.length) {
-    return rdfItems;
-  }
-
-  return asArray(xml?.feed?.entry);
-}
-
-async function fetchSource(source) {
-  const response = await fetch(source.url, {
-    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
-    headers: {
-      'User-Agent': 'MinimalNewsAggregator/1.0 (+local)'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  const xml = await response.text();
+function parseGlobalVoices(xml, source = SOURCES[0]) {
   const parsed = parser.parse(xml);
-  let sourceItems = getRawItems(parsed);
-  if (source.name === 'DRUDGE REPORT') {
-    sourceItems = selectDrudgeLeadItems(sourceItems);
-  }
-  const rawItems = sourceItems.slice(0, FEED_ITEM_LIMIT);
-
-  const mapped = rawItems
-    .map((item) => {
-      const title = cleanText(textValue(item.title));
-      const link = normalizeUrl(
-        source.name === 'DRUDGE REPORT'
-          ? (extractDrudgeMainHeadlineLink(item) || extractLink(item))
-          : extractLink(item)
-      );
-      if (!title || !link) {
-        return null;
-      }
-
-      return {
-        id: itemId(title, link),
-        source: source.name,
-        title,
-        link,
-        publishedAt: extractDate(item),
-        tldr: tldrFrom(item),
-        image: extractImage(item)
-      };
-    })
-    .filter(Boolean)
-    .filter((entry) => isLikelyEnglishText(entry.title));
-
-  return mapped;
-}
-
-async function fetchDrudgeLeadItem() {
-  const response = await fetch(DRUDGE_FEED_URL, {
-    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
-    headers: {
-      'User-Agent': 'MinimalNewsAggregator/1.0 (+local)'
-    }
+  const entries = asArray(parsed?.rss?.channel?.item);
+  if (!parsed?.rss?.channel) throw new Error('Publisher did not return an RSS feed');
+  return entries.slice(0, 40).flatMap((entry) => {
+    const title = cleanText(textValue(entry.title));
+    const author = cleanText(textValue(entry['dc:creator']));
+    const link = validArticleLink(textValue(entry.link), source.host);
+    const body = textValue(entry['content:encoded']);
+    // Guest/partner work and separately licensed text require individual clearance.
+    const exception = /guest contributor|republication|originally (?:appeared|published) (?:in|by)|all rights reserved|not (?:covered|available) under|used (?:with|by) permission/i;
+    if (!title || !link || !author || exception.test(`${author} ${body}`)) return [];
+    return [makeStory(source, title, link, author, dateFrom(textValue(entry.pubDate)), source.licenseName, source.licenseUrl)];
   });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  const xml = await response.text();
-  const parsed = parser.parse(xml);
-  const sourceItems = selectDrudgeLeadItems(getRawItems(parsed)).slice(0, 1);
-
-  for (const item of sourceItems) {
-    const title = cleanText(textValue(item.title));
-    const link = normalizeUrl(extractDrudgeMainHeadlineLink(item) || extractLink(item));
-    if (!title || !link) {
-      continue;
-    }
-    if (!isLikelyEnglishText(title)) {
-      continue;
-    }
-
-    return {
-      id: itemId(title, link),
-      source: 'DRUDGE REPORT',
-      title,
-      link,
-      publishedAt: extractDate(item),
-      tldr: tldrFrom(item),
-      image: extractImage(item)
-    };
-  }
-  return null;
 }
-
+async function request(url, fetchImpl = fetch) {
+  const response = await fetchImpl(url, {
+    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+    headers: { 'User-Agent': USER_AGENT }
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response;
+}
+function wikiUrl(params) {
+  const url = new URL(SOURCES[1].url);
+  url.search = new URLSearchParams({ action: 'query', format: 'json', ...params }).toString();
+  return url.toString();
+}
+async function fetchWikinews(fetchImpl = fetch) {
+  const source = SOURCES[1];
+  const response = await request(wikiUrl({ list: 'categorymembers', cmtitle: 'Category:Published', cmtype: 'page', cmsort: 'timestamp', cmdir: 'desc', cmlimit: '15', cmprop: 'ids|title|timestamp' }), fetchImpl);
+  const data = await response.json();
+  if (!Array.isArray(data?.query?.categorymembers)) throw new Error('Wikinews did not return published stories');
+  const candidates = data.query.categorymembers.filter((entry) => entry.ns === 0);
+  // Query each page's creation revision to choose the correct license version.
+  const settled = await Promise.allSettled(candidates.map(async (entry) => {
+    const detailResponse = await request(wikiUrl({ pageids: String(entry.pageid), prop: 'info|revisions', inprop: 'url', rvprop: 'timestamp', rvdir: 'newer', rvlimit: '1' }), fetchImpl);
+    const detail = await detailResponse.json();
+    const page = detail?.query?.pages?.[entry.pageid];
+    const created = dateFrom(page?.revisions?.[0]?.timestamp);
+    const link = validArticleLink(page?.fullurl, source.host);
+    const title = cleanText(page?.title);
+    if (!created || !link || !title || page.ns !== 0) return null;
+    const version = created >= '2024-12-16T00:00:00.000Z' ? '4.0' : created >= '2005-09-25T00:00:00.000Z' ? '2.5' : null;
+    if (!version) return null;
+    return makeStory(source, title, link, 'Wikinews contributors', dateFrom(entry.timestamp) || created, `CC BY ${version}`, `https://creativecommons.org/licenses/by/${version}/`);
+  }));
+  const items = settled.flatMap((result) => result.status === 'fulfilled' && result.value ? [result.value] : []);
+  if (candidates.length && !items.length) throw new Error('Could not verify Wikinews story attribution and licenses');
+  return items;
+}
 function dedupeAndSort(items) {
-  const map = new Map();
-
+  const stories = new Map();
+  const oldest = Date.now() - 30 * 24 * 60 * 60 * 1000;
   for (const item of items) {
-    const key = item.link || item.title.toLowerCase();
-    const existing = map.get(key);
-    if (!existing) {
-      map.set(key, item);
-      continue;
-    }
-
-    const existingPriority = sourcePriority(existing.source);
-    const currentPriority = sourcePriority(item.source);
-    if (currentPriority > existingPriority) {
-      map.set(key, item);
-      continue;
-    }
-    if (currentPriority < existingPriority) {
-      continue;
-    }
-
-    const existingTs = existing.publishedAt ? Date.parse(existing.publishedAt) : 0;
-    const currentTs = item.publishedAt ? Date.parse(item.publishedAt) : 0;
-    if (currentTs > existingTs) {
-      map.set(key, item);
-    }
+    const published = Date.parse(item.publishedAt);
+    if (published >= oldest && published <= Date.now() + 24 * 60 * 60 * 1000 && !stories.has(item.link)) stories.set(item.link, item);
   }
-
-  const ranked = Array.from(map.values())
-    .sort((a, b) => {
-      const aTs = a.publishedAt ? Date.parse(a.publishedAt) : 0;
-      const bTs = b.publishedAt ? Date.parse(b.publishedAt) : 0;
-      return bTs - aTs;
-    });
-
-  const limited = ranked.slice(0, RESULT_LIMIT);
-  const drudgeLead = ranked.find(
-    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
-  );
-  if (drudgeLead && !limited.some((item) => item.id === drudgeLead.id) && limited.length) {
-    limited[limited.length - 1] = drudgeLead;
-  }
-
-  return limited;
+  return [...stories.values()].sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0)).slice(0, RESULT_LIMIT);
 }
-
-function headlineRewritePrompt(items) {
-  return [
-    'Rewrite each news headline so it is about 50% spicier than the source.',
-    'Use punchy tabloid energy: emphasize stakes, conflict, surprise, consequences, or hypocrisy when the supplied headline supports it.',
-    'Stay accurate. Preserve names, numbers, quotations, attribution, uncertainty, and the central meaning.',
-    'Never invent facts, motives, scandal, criminality, causation, or certainty.',
-    'Do not add reactions, predictions, judgments, metaphors, or characterizations that are absent from the supplied headline.',
-    'Do not swap a factual action for a more extreme euphemism: for example, "calls for resignation" must remain "calls for resignation," never "calls for a scalp."',
-    'Allowed techniques are tighter phrasing, active voice, semantically equivalent stronger verbs, and punchier punctuation.',
-    'Unless a supplied headline contains them, never add words or ideas such as surprise, shock, twist, bold, chaos, bombshell, showdown, drama, stunning, big plans, under scrutiny, or nobody expected.',
-    'Do not change attribution such as "says" or "reports" into "confirms," and do not turn a proposal, plan, allegation, or possibility into a fact.',
-    'If the source headline does not support a spicy rewrite, keep it close to the original and improve only its rhythm.',
-    'Return only the headline text. Never append notes such as "unchanged," "original," or explanations.',
-    'Keep each rewrite concise and return exactly one rewrite for every supplied id.',
-    '',
-    JSON.stringify(items.map(({ id, source, title }) => ({ id, source, title })))
-  ].join('\n');
-}
-
-function responseOutputText(responseBody) {
-  for (const outputItem of responseBody?.output || []) {
-    for (const contentItem of outputItem?.content || []) {
-      if (contentItem?.type === 'output_text' && typeof contentItem.text === 'string') {
-        return contentItem.text;
-      }
-    }
-  }
-  return '';
-}
-
-function rememberHeadlineRewrite(id, title) {
-  if (headlineRewriteCache.size >= HEADLINE_REWRITE_CACHE_LIMIT) {
-    const oldestKey = headlineRewriteCache.keys().next().value;
-    headlineRewriteCache.delete(oldestKey);
-  }
-  headlineRewriteCache.set(id, title);
-}
-
-async function rewriteHeadlineBatch(items) {
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    signal: AbortSignal.timeout(HEADLINE_REWRITE_TIMEOUT_MS),
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: HEADLINE_REWRITE_MODEL,
-      reasoning: { effort: 'minimal' },
-      input: headlineRewritePrompt(items),
-      max_output_tokens: 3000,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'headline_rewrites',
-          strict: true,
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              rewrites: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    id: { type: 'string' },
-                    title: { type: 'string' }
-                  },
-                  required: ['id', 'title']
-                }
-              }
-            },
-            required: ['rewrites']
-          }
-        }
-      }
-    })
+async function aggregateNews(fetchImpl = fetch) {
+  const settled = await Promise.allSettled([
+    request(SOURCES[0].url, fetchImpl).then((response) => response.text()).then((xml) => parseGlobalVoices(xml)),
+    fetchWikinews(fetchImpl)
+  ]);
+  const items = [], errors = [];
+  settled.forEach((result, index) => {
+    if (result.status === 'fulfilled') items.push(...result.value);
+    else errors.push({ source: SOURCES[index].name, error: result.reason?.message || 'Source unavailable' });
   });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    const providerMessage = cleanText(errorBody?.error?.message || 'Request failed');
-    throw new Error(`OpenAI HTTP ${response.status}: ${providerMessage}`);
-  }
-
-  const responseBody = await response.json();
-  const parsed = JSON.parse(responseOutputText(responseBody));
-  const requestedIds = new Set(items.map((item) => item.id));
-
-  for (const rewrite of parsed?.rewrites || []) {
-    const title = cleanText(rewrite?.title)
-      .replace(/\s*(?:\(|\[|[-—:]\s*)(?:left\s+)?(?:unchanged|original)(?:\)|\])?\s*$/i, '')
-      .trim();
-    if (!requestedIds.has(rewrite?.id) || !title || title.length > 220) {
-      continue;
-    }
-    rememberHeadlineRewrite(rewrite.id, title);
-  }
+  return { generatedAt: new Date().toISOString(), items: dedupeAndSort(items), errors };
 }
-
-async function addRewrittenHeadlines(items) {
-  const withOriginals = items.map((item) => ({ ...item, originalTitle: item.title }));
-  if (!process.env.OPENAI_API_KEY) {
-    return { items: withOriginals, error: null };
-  }
-
-  const missing = withOriginals.filter((item) => !headlineRewriteCache.has(item.id));
-  const batches = [];
-  for (let index = 0; index < missing.length; index += HEADLINE_REWRITE_BATCH_SIZE) {
-    batches.push(missing.slice(index, index + HEADLINE_REWRITE_BATCH_SIZE));
-  }
-
-  const settled = await Promise.allSettled(batches.map((batch) => rewriteHeadlineBatch(batch)));
-  for (const result of settled) {
-    if (result.status === 'rejected') {
-      console.error('[headline-rewrite]', result.reason?.message || result.reason);
-    }
-  }
-  const failedCount = settled.filter((result) => result.status === 'rejected').length;
-
-  return {
-    items: withOriginals.map((item) => ({
-      ...item,
-      title: headlineRewriteCache.get(item.id) || item.title
-    })),
-    error: failedCount
-      ? `${failedCount} of ${batches.length} headline rewrite batches failed; original headlines were used.`
-      : null
-  };
-}
-
-async function aggregateNews() {
-  const settled = await Promise.allSettled(SOURCES.map((source) => fetchSource(source)));
-
-  const items = [];
-  const errors = [];
-
-  for (let i = 0; i < settled.length; i += 1) {
-    const result = settled[i];
-    const source = SOURCES[i];
-
-    if (result.status === 'fulfilled') {
-      items.push(...result.value);
-      continue;
-    }
-
-    errors.push({
-      source: source.name,
-      error: result.reason?.message || 'Unknown fetch error'
-    });
-  }
-
-  const hasDrudge = items.some(
-    (item) => String(item.source || '').trim().toUpperCase() === 'DRUDGE REPORT'
-  );
-  if (!hasDrudge) {
-    try {
-      const drudgeLead = await fetchDrudgeLeadItem();
-      if (drudgeLead) {
-        items.push(drudgeLead);
-      }
-    } catch (error) {
-      errors.push({
-        source: 'DRUDGE REPORT',
-        error: error?.message || 'Unknown fetch error'
-      });
-    }
-  }
-
-  const rewritten = await addRewrittenHeadlines(dedupeAndSort(items));
-  if (rewritten.error) {
-    errors.push({ source: 'NewsDrip headlines', error: rewritten.error });
-  }
-
-  return {
-    generatedAt: new Date().toISOString(),
-    items: rewritten.items,
-    errors
-  };
-}
-
 async function getNews(forceRefresh = false) {
-  const now = Date.now();
-
-  if (!forceRefresh && cache.data && now < cache.expiresAt) {
-    return cache.data;
-  }
-
-  if (cache.pending) {
-    return cache.pending;
-  }
-
-  cache.pending = aggregateNews()
-    .then((result) => {
-      cache.data = result;
-      cache.expiresAt = Date.now() + CACHE_TTL_MS;
-      return result;
-    })
-    .finally(() => {
-      cache.pending = null;
-    });
-
+  if (!forceRefresh && cache.data && Date.now() < cache.expiresAt) return cache.data;
+  if (cache.pending) return cache.pending;
+  cache.pending = aggregateNews().then((result) => {
+    if (!result.items.length) {
+      if (cache.data) return { ...cache.data, stale: true, errors: result.errors };
+      throw new Error('News sources are temporarily unavailable. Please try refreshing.');
+    }
+    cache.data = result;
+    cache.expiresAt = Date.now() + CACHE_TTL_MS;
+    return result;
+  }).finally(() => { cache.pending = null; });
   return cache.pending;
 }
-
 const webPublicDir = path.join(__dirname, 'apps', 'web', 'public');
-
 app.use(express.static(webPublicDir));
-
-// Health checks must not depend on external news publishers.
-app.get('/healthz', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.get('/privacy-policy', (req, res) => {
-  res.sendFile(path.join(__dirname, 'docs', 'privacy-policy.html'));
-});
-
+app.get('/healthz', (req, res) => res.json({ status: 'ok' }));
+app.get('/privacy-policy', (req, res) => res.sendFile(path.join(__dirname, 'docs', 'privacy-policy.html')));
+app.get('/content-sources', (req, res) => res.sendFile(path.join(__dirname, 'docs', 'content-sources.html')));
 app.get('/api/news', async (req, res) => {
-  try {
-    const forceRefresh = req.query.refresh === '1';
-    const data = await getNews(forceRefresh);
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Failed to aggregate news.',
-      details: error?.message || 'Unknown error'
-    });
-  }
+  try { res.json(await getNews(req.query.refresh === '1')); }
+  catch (error) { res.status(503).json({ error: error.message }); }
 });
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(webPublicDir, 'index.html'));
-});
-
-function findLanIp() {
-  const interfaces = os.networkInterfaces();
-  for (const addresses of Object.values(interfaces)) {
-    for (const address of addresses || []) {
-      if (address && address.family === 'IPv4' && !address.internal) {
-        return address.address;
-      }
-    }
-  }
-  return '';
-}
-
-app.listen(PORT, HOST, () => {
-  const lanIp = findLanIp();
-  // eslint-disable-next-line no-console
-  console.log(`News aggregator running at http://localhost:${PORT}`);
-  if (lanIp) {
-    // eslint-disable-next-line no-console
-    console.log(`LAN URL: http://${lanIp}:${PORT}`);
-  }
-});
+app.get('*', (req, res) => res.sendFile(path.join(webPublicDir, 'index.html')));
+if (require.main === module) app.listen(PORT, HOST, () => console.log(`NewsDrip running on port ${PORT}`));
+module.exports = { app, SOURCES, parseGlobalVoices, fetchWikinews, aggregateNews, dedupeAndSort, validArticleLink };

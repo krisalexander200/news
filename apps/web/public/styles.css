@@ -292,7 +292,7 @@ body {
 
 .tldr-only .story h2 {
   color: #000;
-  font-size: clamp(0.95rem, 2vw, 1.08rem);
+  font-size: clamp(1.05rem, 2vw, 1.18rem);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -365,3 +365,11 @@ body {
     padding: 0.56rem 0.66rem 0.62rem;
   }
 }
+
+.source-credit { margin: 0 0 2px; font-size: 0.8rem; color: #555; }
+.license-link { display: inline-block; padding: 5px 0; font-size: 0.8rem; color: #8f1717; }
+.attribution { margin-bottom: 8px; }
+.urgent-lead .attribution { text-align: center; }
+.related-links .source-credit, .related-links .license-link { font-size: 0.75rem; font-weight: 400; }
+.sources-footer { padding: 24px 0; color: #555; font-size: 0.85rem; }
+.sources-footer a { color: #8f1717; }

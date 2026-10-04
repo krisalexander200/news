@@ -16,7 +16,7 @@
     <main class="shell">
       <section id="urgentLead" class="urgent-lead" hidden>
         <div class="urgent-copy">
-          <img id="urgentImage" class="urgent-image" alt="" hidden />
+          <div id="urgentAttribution" class="attribution"></div>
           <h2 class="urgent-title">
             <a id="urgentTitleLink" target="_blank" rel="noopener noreferrer"></a>
           </h2>
@@ -28,17 +28,22 @@
       <header class="topbar">
         <h1 class="brand-wordmark">NewsDrip<span class="brand-dot">.</span></h1>
         <div class="actions">
+          <button id="refreshBtn" class="action-btn" type="button">Refresh</button>
           <button id="tldrBtn" class="action-btn" type="button" aria-pressed="true">TLDR</button>
         </div>
       </header>
 
       <section id="errorBox" class="error-box" hidden></section>
       <section id="newsList" class="news-list" aria-live="polite"></section>
+      <footer class="sources-footer">
+        <p>Original headlines from independently published sources.</p>
+        <a href="/content-sources">Sources &amp; licenses</a> · <a href="/privacy-policy">Privacy policy</a>
+      </footer>
     </main>
 
     <template id="storyTemplate">
       <article class="story">
-        <img class="story-image" alt="" hidden />
+        <div class="attribution"></div>
         <h2><a target="_blank" rel="noopener noreferrer"></a></h2>
         <p class="detail"></p>
       </article>
