@@ -8,7 +8,7 @@ Source and author credits, article links, and license links remain visible benea
 
 ## Current headline feed
 
-28 sources are configured in `config/news-sources.json`. The backend displays original headlines, publication names and links, without article text, summaries or photographs. The Sources page lists every configured publication. Drudge uses a third-party FeedPress feed; Reuters uses Google News search RSS rather than a direct Reuters feed agreement.
+28 sources are configured in `config/news-sources.json`. The backend displays original headlines, publication names and links, without article text or summaries; feed-supplied images are displayed when available. The Sources page lists every configured publication. Drudge uses a third-party FeedPress feed; Reuters uses Google News search RSS rather than a direct Reuters feed agreement.
 
 Risk ratings are operational judgments, not legal clearance. High means restrictive conditions or an unverified intermediary; Medium means applicable native-app reuse permission remains unresolved; Low requires explicit applicable permission. Public feed access alone is not permission. No configured publisher currently has a Low rating.
 
@@ -23,3 +23,5 @@ Install dependencies, then run `npm start`. The web app and API use the same bac
 ## Release
 
 Render auto-deploys main. EAS production builds use the production Render API. Physical-device checks, revised store screenshots, publisher rights decisions and App Review submission remain separate release steps. Do not describe this expanded feed as fully licensed or reuse the old TLDR screenshots.
+
+Feed image display was enabled by user request on October 6. The headline-only risk workbook does not establish image reuse permission. Pictures come only from explicit RSS/Atom image fields, without scraping article pages; unavailable pictures collapse.

@@ -13,7 +13,7 @@
       "type": "p",
       "runs": [
         {
-          "text": "NewsDrip displays headline links from the sources below. Tap a headline to read the original publisher’s article. Names identify sources and do not imply a partnership or endorsement. Feed availability varies. Article text, summaries, and photos are not reproduced.",
+          "text": "NewsDrip displays headline links from the sources below. Tap a headline to read the original publisher’s article. Names identify sources and do not imply a partnership or endorsement. Feed availability varies. Article text and summaries are not reproduced. Pictures are shown when supplied in RSS image fields.",
           "href": null
         }
       ]
@@ -411,7 +411,7 @@
       "type": "p",
       "runs": [
         {
-          "text": "News headline links are aggregated by our backend from publisher RSS feeds and selected feed intermediaries. The Sources page lists the publications and identifies intermediary feeds. The app does not send user content to an AI service and does not display third-party article images. When you open an article, you are sent to that publisher's website and their privacy policy applies there.",
+          "text": "News headline links are aggregated by our backend from publisher RSS feeds and selected feed intermediaries. The Sources page lists the publications and identifies intermediary feeds. The app does not send user content to an AI service and displays images supplied in RSS feed image fields. When you open an article, you are sent to that publisher's website and their privacy policy applies there.",
           "href": null
         }
       ]

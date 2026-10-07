@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
   Easing,
+  Image,
   Linking,
   Modal,
   ScrollView,
@@ -400,6 +401,13 @@ function LoadingDrip() {
   );
 }
 
+function FeedImage({ uri }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [uri]);
+  if (!uri || failed) return null;
+  return <Image source={{ uri }} style={{ width: '100%', height: 180, marginBottom: 10 }} resizeMode="cover" accessible={false} onError={() => setFailed(true)} />;
+}
+
 export default function App() {
   const [legalPage, setLegalPage] = useState(null);
   const [items, setItems] = useState([]);
@@ -518,6 +526,7 @@ export default function App() {
   const renderStory = ({ item }) => (
     <View style={styles.story}>
       <Pressable accessibilityRole="link" onPress={() => openLink(item.link)}>
+        <FeedImage uri={item.image} />
         <Text style={[styles.storyTitle, styles.storyTitleCompact]}>{item.title}<Text style={styles.inlineSource}> · {item.source}</Text></Text>
       </Pressable>
     </View>
@@ -528,6 +537,7 @@ export default function App() {
       {featuredStory ? (
         <View style={styles.featured}>
           <Pressable accessibilityRole="link" onPress={() => openLink(featuredStory.link)}>
+            <FeedImage uri={featuredStory.image} />
             <Text style={[styles.featuredTitle, styles.featuredTitleCompact]}>
               {featuredStory.title}<Text style={styles.inlineSource}> · {featuredStory.source}</Text>
             </Text>
@@ -536,6 +546,7 @@ export default function App() {
             <View style={styles.relatedList}>
               {relatedStories.map((item) => (
                 <View key={item.id} style={styles.relatedItem}>
+                  <FeedImage uri={item.image} />
                   <Text accessibilityRole="link" onPress={() => openLink(item.link)}>{item.title}<Text style={styles.inlineSource}> · {item.source}</Text></Text>
                 </View>
               ))}

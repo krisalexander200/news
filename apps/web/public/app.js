@@ -1,3 +1,11 @@
+function appendFeedImage(container, item, className) {
+  if (!item.image) return;
+  const image = document.createElement('img');
+  image.src = item.image; image.alt = ''; image.className = className;
+  image.loading = 'lazy'; image.referrerPolicy = 'no-referrer';
+  image.addEventListener('error', () => image.remove(), { once: true });
+  container.prepend(image);
+}
 function appendInlineSource(link, item) { const credit = document.createElement('span'); credit.style.cssText = 'font-size:12px;font-weight:400;color:#666'; credit.textContent = ' · ' + item.source; link.appendChild(credit); }
 const newsListEl = document.getElementById('newsList');
 const errorBoxEl = document.getElementById('errorBox');
@@ -226,6 +234,7 @@ function renderRelatedLinks(relatedStories) {
     link.textContent = story.title;
     appendInlineSource(link, story);
     row.appendChild(link);
+    appendFeedImage(row, story, 'story-image');
     relatedLinksEl.appendChild(row);
   }
 }
@@ -233,7 +242,9 @@ function renderRelatedLinks(relatedStories) {
 function renderUrgentStory(item, relatedStories) {
   urgentLeadEl.hidden = !item;
   urgentStoryId = item ? item.id : null;
+  urgentLeadEl.querySelector('img')?.remove();
   if (!item) return;
+  appendFeedImage(urgentLeadEl, item, 'urgent-image');
   urgentTitleLinkEl.href = item.link;
   urgentTitleLinkEl.textContent = item.title; appendInlineSource(urgentTitleLinkEl, item);
   const attribution = document.getElementById('urgentAttribution');
@@ -247,6 +258,7 @@ function appendStory(container, item) {
   const node = storyTemplate.content.cloneNode(true);
   const titleLink = node.querySelector('h2 a');
   const detail = node.querySelector('.detail');
+  appendFeedImage(node.querySelector('article'), item, 'story-image');
   titleLink.href = item.link;
   titleLink.textContent = item.title; appendInlineSource(titleLink, item);
   detail.hidden = true;

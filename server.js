@@ -55,6 +55,23 @@ function safeLink(value) {
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.toString() : '';
   } catch { return ''; }
 }
+function feedImage(entry) {
+  const candidates = [
+    ...asArray(entry['media:thumbnail']),
+    ...asArray(entry['media:content']),
+    ...asArray(entry['media:group']).flatMap(group => [...asArray(group?.['media:thumbnail']), ...asArray(group?.['media:content'])]),
+    ...asArray(entry.enclosure).filter(value => String(value?.['@_type'] || '').startsWith('image/')),
+    ...asArray(entry.link).filter(value => value?.['@_rel'] === 'enclosure' && String(value?.['@_type'] || '').startsWith('image/'))
+  ];
+  for (const candidate of candidates) {
+    const type = String(candidate?.['@_type'] || '');
+    if (type && !type.startsWith('image/')) continue;
+    if (candidate?.['@_medium'] && candidate['@_medium'] !== 'image') continue;
+    const url = safeLink(candidate?.['@_url'] || candidate?.['@_href'] || '');
+    if (url.startsWith('https:')) return url;
+  }
+  return '';
+}
 function parseFeed(xml, source) {
   const parsed = parser.parse(xml);
   const channel = parsed?.rss?.channel;
@@ -66,7 +83,7 @@ function parseFeed(xml, source) {
     const link = safeLink(extractLink(entry));
     const publishedAt = dateFrom(textValue(entry.pubDate) || textValue(entry.published) || textValue(entry.updated) || textValue(entry['dc:date']));
     if (!title || !link || !publishedAt) return [];
-    return [{...makeStory(source, title, link, '', publishedAt, '', ''), attribution: source.name}];
+    return [{...makeStory(source, title, link, '', publishedAt, '', ''), image: feedImage(entry), attribution: source.name, changes: 'Original headline and feed-supplied image; article text is not reproduced.'}];
   });
 }
 async function request(url, fetchImpl = fetch) {

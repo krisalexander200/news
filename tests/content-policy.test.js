@@ -10,10 +10,10 @@ test('inventory has at least 20 named feeds including Drudge, with explicit risk
  assert.equal(new Set(SOURCES.map(s=>s.name)).size,SOURCES.length);
  assert.ok(SOURCES.every(s=>['High','Medium','Low'].includes(s.risk) && s.reason && s.evidence && s.url.startsWith('https:')));
 });
-test('RSS preserves headlines but never republishes text, images or invented licenses', () => {
+test('RSS preserves headlines and feed pictures without text or invented licenses', () => {
  const [item] = parseFeed(rss(entry()),source);
  assert.equal(item.title,'A & B headline'); assert.equal(item.originalTitle,item.title);
- assert.equal(item.source,source.name); assert.equal(item.tldr,''); assert.equal(item.image,''); assert.equal(item.licenseName,'');
+ assert.equal(item.source,source.name); assert.equal(item.tldr,''); assert.equal(item.image,'https://example.com/photo.jpg'); assert.equal(item.licenseName,'');
 });
 test('Atom alternate links and RDF dates are supported', () => {
  const atom = `<feed><entry><title>Atom story</title><link rel="self" href="https://example.com/api"/><link rel="alternate" href="https://example.com/article"/><updated>${new Date().toISOString()}</updated></entry></feed>`;
@@ -38,4 +38,10 @@ test('fair selection retains smaller publishers and suppresses exact duplicates'
 test('publisher failures leave the remaining feeds usable and are reported separately',async()=>{
  const result=await aggregateNews(async(url)=>{if(url!==SOURCES[0].url)throw new Error('Outage'); return {ok:true,text:async()=>rss(entry())};});
  assert.equal(result.items.length,1); assert.equal(result.errors.length,SOURCES.length-1);
+});
+
+test('image enclosures are accepted but videos and unsafe image URLs are excluded', () => {
+ const bare=entry().replace('<media:thumbnail url="https://example.com/photo.jpg"/>','');
+ assert.equal(parseFeed(rss(bare.replace('</item>','<enclosure type="image/jpeg" url="https://example.com/enclosed.jpg"/></item>')),source)[0].image,'https://example.com/enclosed.jpg');
+ for (const media of ['<media:content medium="video" url="https://example.com/video.mp4"/>','<media:thumbnail url="javascript:alert(1)"/>','<media:thumbnail url="https://user:pass@example.com/photo.jpg"/>']) assert.equal(parseFeed(rss(bare.replace('</item>',media+'</item>')),source)[0].image,'');
 });
