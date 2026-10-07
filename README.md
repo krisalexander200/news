@@ -6,31 +6,20 @@ The release pipeline uses documented Creative Commons sources: eligible Global V
 
 Source and author credits, article links, and license links remain visible beneath each headline. See [the rights audit](docs/content-rights-audit.md) and [public source documentation](docs/content-sources.html).
 
-## Run
+## Current headline feed
 
-Install root dependencies with `npm ci`, then run `npm start`. Open http://localhost:3000. The backend in `server.js` serves `apps/web/public`.
+28 sources are configured in `config/news-sources.json`. The backend displays original headlines, publication names and links, without article text, summaries or photographs. The Sources page lists every configured publication. Drudge uses a third-party FeedPress feed; Reuters uses Google News search RSS rather than a direct Reuters feed agreement.
 
-For mobile, install dependencies in `apps/mobile`, then run `npm start` there. Set `EXPO_PUBLIC_API_BASE_URL` to a device-accessible HTTPS backend for production; production EAS configuration uses https://news-8ih0.onrender.com.
+Risk ratings are operational judgments, not legal clearance. High means restrictive conditions or an unverified intermediary; Medium means applicable native-app reuse permission remains unresolved; Low requires explicit applicable permission. Public feed access alone is not permission. No configured publisher currently has a Low rating.
 
-## Verify
+The live check on October 6 returned 280 headlines from 26 sources. CNN failed to fetch and Politico returned HTTP 403. Each feed is checked independently; failures do not suppress working publishers. Stories older than seven days are excluded. Balanced selection prevents one outlet from crowding out the others.
 
-```sh
-node --test tests/content-policy.test.js
-node scripts/check-live-feeds.js
-cd apps/mobile
-EXPO_PUBLIC_API_BASE_URL=https://news-8ih0.onrender.com npx expo export --platform ios --output-dir /tmp/newsdrip-ios-export
-```
+## Run and verify
 
-The live check needs network access. An exported bundle confirms compilation, not physical-device or signed-build testing.
+Install dependencies, then run `npm start`. The web app and API use the same backend. Run `node --test tests/content-policy.test.js` and `node scripts/check-live-feeds.js` to verify parsing, freshness, source variety and actual publisher access.
 
-## API
+`GET /api/news` returns `generatedAt`, `items`, `errors`, and per-source `sourceStatus`. `?refresh=1` bypasses the three-minute cache. If every publisher fails, a previous in-process response may be returned with `stale: true`; otherwise the endpoint returns 503. `/healthz`, `/privacy-policy`, and `/content-sources` are public endpoints.
 
-`GET /api/news` returns `generatedAt`, `items`, and source `errors`. Each item includes the original `title`, `originalTitle`, `source`, `author`, `link`, `publishedAt`, `licenseName`, `licenseUrl`, `policyUrl`, `attribution`, and `changes`. Compatibility fields `tldr` and `image` are empty. `?refresh=1` bypasses the three-minute cache. If all publishers fail, the last successful in-process feed may be returned with `stale: true`; otherwise the endpoint returns 503.
+## Release
 
-`/healthz`, `/privacy-policy`, and `/content-sources` are public endpoints.
-
-## Deployment and review
-
-Render auto-deploys the configured repository using `render.yaml`. The free service can sleep when idle, increasing cold-start loading time. Verify real production headlines after deployment, not just process health.
-
-From `apps/mobile`, authenticate the official EAS CLI and run `eas build --platform ios --profile production`. The production profile increments the build number. Upload the resulting signed build to TestFlight, test it on a physical device, and record the flow before preparing resubmission. See [review response and recording checklist](docs/app-review-response.md). Do not reuse rejected build 8 screenshots or claim AI summaries in store metadata.
+Render auto-deploys main. EAS production builds use the production Render API. Physical-device checks, revised store screenshots, publisher rights decisions and App Review submission remain separate release steps. Do not describe this expanded feed as fully licensed or reuse the old TLDR screenshots.

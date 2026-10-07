@@ -1,3 +1,4 @@
+function appendInlineSource(link, item) { const credit = document.createElement('span'); credit.style.cssText = 'font-size:12px;font-weight:400;color:#666'; credit.textContent = ' · ' + item.source; link.appendChild(credit); }
 const newsListEl = document.getElementById('newsList');
 const errorBoxEl = document.getElementById('errorBox');
 const topbarEl = document.querySelector('.topbar');
@@ -213,20 +214,6 @@ function pickRelatedStories(anchorStory, pool) {
     .map((entry) => entry.item);
 }
 
-function appendAttribution(container, item) {
-  const credit = document.createElement('p');
-  credit.className = 'source-credit';
-  credit.textContent = item.attribution || item.source;
-  const license = document.createElement('a');
-  license.className = 'license-link';
-  license.href = item.licenseUrl;
-  license.target = '_blank';
-  license.rel = 'noopener noreferrer';
-  license.textContent = item.licenseName || '';
-  container.appendChild(credit);
-  if (item.licenseName && item.licenseUrl) container.appendChild(license);
-}
-
 function renderRelatedLinks(relatedStories) {
   relatedLinksEl.replaceChildren();
   relatedLinksEl.hidden = !relatedStories.length;
@@ -237,8 +224,8 @@ function renderRelatedLinks(relatedStories) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = story.title;
+    appendInlineSource(link, story);
     row.appendChild(link);
-    appendAttribution(row, story);
     relatedLinksEl.appendChild(row);
   }
 }
@@ -248,10 +235,9 @@ function renderUrgentStory(item, relatedStories) {
   urgentStoryId = item ? item.id : null;
   if (!item) return;
   urgentTitleLinkEl.href = item.link;
-  urgentTitleLinkEl.textContent = item.title;
+  urgentTitleLinkEl.textContent = item.title; appendInlineSource(urgentTitleLinkEl, item);
   const attribution = document.getElementById('urgentAttribution');
   attribution.replaceChildren();
-  appendAttribution(attribution, item);
   renderRelatedLinks(relatedStories);
   urgentDetailEl.hidden = true;
   urgentDetailEl.textContent = '';
@@ -261,9 +247,8 @@ function appendStory(container, item) {
   const node = storyTemplate.content.cloneNode(true);
   const titleLink = node.querySelector('h2 a');
   const detail = node.querySelector('.detail');
-  appendAttribution(node.querySelector('.attribution'), item);
   titleLink.href = item.link;
-  titleLink.textContent = item.title;
+  titleLink.textContent = item.title; appendInlineSource(titleLink, item);
   detail.hidden = true;
   detail.textContent = '';
   container.appendChild(node);

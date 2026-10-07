@@ -515,26 +515,11 @@ export default function App() {
     </View>
   );
 
-  const renderAttribution = (item) => (
-    <View style={styles.attribution}>
-      <Text style={styles.sourceCredit}>{item.attribution || item.source}</Text>
-      {item.licenseName && item.licenseUrl ? <Text
-        style={styles.licenseLink}
-        accessibilityRole="link"
-        accessibilityLabel={`${item.licenseName} license for ${item.title}`}
-        onPress={() => openLink(item.licenseUrl)}
-      >
-        {item.licenseName}
-      </Text> : null}
-    </View>
-  );
-
   const renderStory = ({ item }) => (
     <View style={styles.story}>
       <Pressable accessibilityRole="link" onPress={() => openLink(item.link)}>
-        <Text style={[styles.storyTitle, styles.storyTitleCompact]}>{item.title}</Text>
+        <Text style={[styles.storyTitle, styles.storyTitleCompact]}>{item.title}<Text style={styles.inlineSource}> · {item.source}</Text></Text>
       </Pressable>
-      {renderAttribution(item)}
     </View>
   );
 
@@ -544,16 +529,14 @@ export default function App() {
         <View style={styles.featured}>
           <Pressable accessibilityRole="link" onPress={() => openLink(featuredStory.link)}>
             <Text style={[styles.featuredTitle, styles.featuredTitleCompact]}>
-              {featuredStory.title}
+              {featuredStory.title}<Text style={styles.inlineSource}> · {featuredStory.source}</Text>
             </Text>
           </Pressable>
-          {renderAttribution(featuredStory)}
           {relatedStories.length ? (
             <View style={styles.relatedList}>
               {relatedStories.map((item) => (
                 <View key={item.id} style={styles.relatedItem}>
-                  <Text accessibilityRole="link" onPress={() => openLink(item.link)}>{item.title}</Text>
-                  {renderAttribution(item)}
+                  <Text accessibilityRole="link" onPress={() => openLink(item.link)}>{item.title}<Text style={styles.inlineSource}> · {item.source}</Text></Text>
                 </View>
               ))}
             </View>
@@ -589,7 +572,7 @@ export default function App() {
           ListFooterComponent={
             <View style={styles.footer}>
               <Text style={styles.sourceCredit}>News from independently published sources.</Text>
-              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => setLegalPage('sources')}>Sources & licenses</Text>
+              <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => setLegalPage('sources')}>Sources</Text>
               <Text style={styles.licenseLink} accessibilityRole="link" onPress={() => setLegalPage('privacy')}>Privacy policy</Text>
             </View>
           }
@@ -644,6 +627,7 @@ const styles = StyleSheet.create({
   legalClose: { minHeight: 44, minWidth: 60, justifyContent: 'center', alignItems: 'center' },
   legalCloseText: { color: '#8f1717', fontSize: 17, fontWeight: '600' },
   attribution: { marginTop: 8, marginBottom: 4 },
+  inlineSource: { fontSize: 12, fontWeight: '400', color: '#666' },
   sourceCredit: { fontSize: 12, lineHeight: 17, color: '#555' },
   licenseLink: { fontSize: 12, lineHeight: 18, color: '#8f1717', textDecorationLine: 'underline', paddingVertical: 5 },
   footer: { paddingVertical: 24, gap: 4 },

@@ -4,7 +4,7 @@
       "type": "h1",
       "runs": [
         {
-          "text": "Sources & licenses",
+          "text": "News sources",
           "href": null
         }
       ]
@@ -13,16 +13,7 @@
       "type": "p",
       "runs": [
         {
-          "text": "NewsDrip helps you discover independently published news. We display headlines with source credits and links to the full articles. We do not reproduce article images or full article text, and we do not rewrite headlines with AI.",
-          "href": null
-        }
-      ]
-    },
-    {
-      "type": "h2",
-      "runs": [
-        {
-          "text": "Global Voices",
+          "text": "NewsDrip displays headline links from the sources below. Tap a headline to read the original publisher’s article. Names identify sources and do not imply a partnership or endorsement. Feed availability varies. Article text, summaries, and photos are not reproduced.",
           "href": null
         }
       ]
@@ -31,33 +22,8 @@
       "type": "p",
       "runs": [
         {
-          "text": "Eligible headlines are credited to the named author and Global Voices, with a link to the original article. Unless otherwise stated, Global Voices-created content is available under",
-          "href": null
-        },
-        {
-          "text": "Creative Commons Attribution 3.0",
-          "href": "https://creativecommons.org/licenses/by/3.0/"
-        },
-        {
-          "text": ". See the",
-          "href": null
-        },
-        {
-          "text": "republishing guidelines",
-          "href": "https://globalvoices.org/about/global-voices-attribution-policy/"
-        },
-        {
-          "text": ". Guest and visibly restricted partner entries are excluded from this feed. Third-party images and media are not included.",
-          "href": null
-        }
-      ]
-    },
-    {
-      "type": "h2",
-      "runs": [
-        {
-          "text": "Wikinews",
-          "href": null
+          "text": "BBC",
+          "href": "https://www.bbc.com/news"
         }
       ]
     },
@@ -65,8 +31,8 @@
       "type": "p",
       "runs": [
         {
-          "text": "Wikinews is now an archive. Articles older than 30 days are excluded from the current feed, so it currently contributes no headlines.",
-          "href": null
+          "text": "CNN",
+          "href": "https://www.cnn.com"
         }
       ]
     },
@@ -74,41 +40,8 @@
       "type": "p",
       "runs": [
         {
-          "text": "Headlines are credited to Wikinews contributors and linked to the original page. Text created from December 16, 2024 uses",
-          "href": null
-        },
-        {
-          "text": "Creative Commons Attribution 4.0",
-          "href": "https://creativecommons.org/licenses/by/4.0/"
-        },
-        {
-          "text": "; earlier eligible text from September 25, 2005 uses",
-          "href": null
-        },
-        {
-          "text": "Attribution 2.5",
-          "href": "https://creativecommons.org/licenses/by/2.5/"
-        },
-        {
-          "text": ". Each story shows its applicable license. See the",
-          "href": null
-        },
-        {
-          "text": "copyright policy",
-          "href": "https://en.wikinews.org/wiki/Wikinews:Copyright"
-        },
-        {
-          "text": ".",
-          "href": null
-        }
-      ]
-    },
-    {
-      "type": "h2",
-      "runs": [
-        {
-          "text": "How content is used",
-          "href": null
+          "text": "NPR",
+          "href": "https://www.npr.org"
         }
       ]
     },
@@ -116,8 +49,8 @@
       "type": "p",
       "runs": [
         {
-          "text": "Headline wording is preserved. Feed markup is converted to plain text for display. Source attribution and license links remain visible in both display modes. Licensed article excerpts and photographs are not displayed. Publisher links open the original website, whose privacy policy and access conditions apply.",
-          "href": null
+          "text": "New York Times",
+          "href": "https://www.nytimes.com"
         }
       ]
     },
@@ -125,17 +58,8 @@
       "type": "p",
       "runs": [
         {
-          "text": "Publishers and authors do not endorse NewsDrip. Names identify the original sources, not a partnership. NewsDrip does not claim ownership of their work.",
-          "href": null
-        }
-      ]
-    },
-    {
-      "type": "h2",
-      "runs": [
-        {
-          "text": "Contact",
-          "href": null
+          "text": "Deadline",
+          "href": "https://deadline.com"
         }
       ]
     },
@@ -143,16 +67,8 @@
       "type": "p",
       "runs": [
         {
-          "text": "For corrections or content questions,",
-          "href": null
-        },
-        {
-          "text": "contact NewsDrip",
-          "href": "https://github.com/krisalexander200/news/issues"
-        },
-        {
-          "text": ".",
-          "href": null
+          "text": "New York Post",
+          "href": "https://nypost.com"
         }
       ]
     },
@@ -160,16 +76,206 @@
       "type": "p",
       "runs": [
         {
-          "text": "Back to NewsDrip",
-          "href": "/"
-        },
+          "text": "Al Jazeera",
+          "href": "https://www.aljazeera.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
         {
-          "text": "·",
+          "text": "Bloomberg",
+          "href": "https://www.bloomberg.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Deutsche Welle",
+          "href": "https://www.dw.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Drudge Report",
+          "href": "https://www.drudgereport.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "CBS News",
+          "href": "https://www.cbsnews.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Fox News",
+          "href": "https://www.foxnews.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "The Guardian",
+          "href": "https://www.theguardian.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "NBC News",
+          "href": "https://www.nbcnews.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "CNBC",
+          "href": "https://www.cnbc.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "ABC News",
+          "href": "https://abcnews.go.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Politico",
+          "href": "https://www.politico.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "ESPN",
+          "href": "https://www.espn.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Wired",
+          "href": "https://www.wired.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Ars Technica",
+          "href": "https://arstechnica.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "The Verge",
+          "href": "https://www.theverge.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "TechCrunch",
+          "href": "https://techcrunch.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Variety",
+          "href": "https://variety.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Financial Times",
+          "href": "https://www.ft.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Sky News",
+          "href": "https://news.sky.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "The Independent",
+          "href": "https://www.independent.co.uk"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "France 24",
+          "href": "https://www.france24.com/en/"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Reuters",
+          "href": "https://www.reuters.com"
+        }
+      ]
+    },
+    {
+      "type": "p",
+      "runs": [
+        {
+          "text": "Drudge Report is an aggregator supplied through a third-party RSS feed. Reuters headlines are discovered through Google News search RSS. These are not direct publisher feed agreements.",
           "href": null
-        },
-        {
-          "text": "Privacy policy",
-          "href": "/privacy-policy"
         }
       ]
     }
@@ -269,7 +375,7 @@
       "type": "li",
       "runs": [
         {
-          "text": "To deliver news headlines from sources with documented reuse permissions.",
+          "text": "To deliver news headline links from RSS feeds.",
           "href": null
         }
       ]
@@ -305,7 +411,7 @@
       "type": "p",
       "runs": [
         {
-          "text": "News headlines are aggregated by our backend from Global Voices RSS and the Wikinews public API. The app does not send user content to an AI service and does not display third-party article images. When you open an article, you are sent to that publisher's website and their privacy policy applies there.",
+          "text": "News headline links are aggregated by our backend from publisher RSS feeds and selected feed intermediaries. The Sources page lists the publications and identifies intermediary feeds. The app does not send user content to an AI service and does not display third-party article images. When you open an article, you are sent to that publisher's website and their privacy policy applies there.",
           "href": null
         }
       ]
