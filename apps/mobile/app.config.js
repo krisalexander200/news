@@ -23,7 +23,7 @@ module.exports = {
     scheme: APP_SCHEME,
     orientation: 'portrait',
     userInterfaceStyle: 'light',
-    icon: './assets/icon-drip-v2.png',
+    icon: './assets/icon-user-v3.png',
     splash: {
       image: './assets/splash.png',
       resizeMode: 'contain',
@@ -31,7 +31,7 @@ module.exports = {
     },
     assetBundlePatterns: ['**/*'],
     ios: {
-      icon: './assets/icon-drip-v2.png',
+      icon: './assets/icon-user-v3.png',
       supportsTablet: true,
       bundleIdentifier: IOS_BUNDLE_ID,
       infoPlist: {
